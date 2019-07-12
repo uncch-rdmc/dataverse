@@ -1,4 +1,4 @@
-#!/bin/bash -l
+#!/bin/bash
 # YOU (THE HUMAN USER) SHOULD NEVER RUN THIS SCRIPT DIRECTLY!
 # It should be run by higher-level installers. 
 # The following arguments should be passed to it 
@@ -74,7 +74,7 @@ function preliminary_setup()
   ./asadmin $ASADMIN_OPTS create-jvm-options "\-Ddataverse.rserve.host=${RSERVE_HOST}"
   ./asadmin $ASADMIN_OPTS create-jvm-options "\-Ddataverse.rserve.port=${RSERVE_PORT}"
   ./asadmin $ASADMIN_OPTS create-jvm-options "\-Ddataverse.rserve.user=${RSERVE_USER}"
-  ./asadmin $ASADMIN_OPTS create-jvm-options '\-Ddataverse.rserve.password=${ALIAS=rserve_password_alias}'
+  ./asadmin $ASADMIN_OPTS create-jvm-options "\-Ddataverse.rserve.password=${ALIAS=rserve_password_alias}"
   # Data Deposit API options
   ./asadmin $ASADMIN_OPTS create-jvm-options "\-Ddataverse.fqdn=${HOST_ADDRESS}"
   # password reset token timeout in minutes
@@ -85,7 +85,7 @@ function preliminary_setup()
   # jvm-options use colons as separators, escape as literal
   DOI_BASEURL_ESC=`echo $DOI_BASEURL | sed -e 's/:/\\\:/'`
   ./asadmin $ASADMIN_OPTS create-jvm-options "\-Ddoi.username=${DOI_USERNAME}"
-  ./asadmin $ASADMIN_OPTS create-jvm-options '\-Ddoi.password=${ALIAS=doi_password_alias}'
+  ./asadmin $ASADMIN_OPTS create-jvm-options "\-Ddoi.password=${ALIAS=doi_password_alias}"
   ./asadmin $ASADMIN_OPTS create-jvm-options "\-Ddoi.baseurlstring=$DOI_BASEURL_ESC"
 
   ./asadmin $ASADMIN_OPTS create-jvm-options "-Ddataverse.timerServer=true"
@@ -126,7 +126,7 @@ function final_setup(){
                                         --property create=true:User=$DB_USER:PortNumber=$DB_PORT:databaseName=$DB_NAME:ServerName=$DB_HOST \
                                         dvnDbPool
 
-       ./asadmin $ASADMIN_OPTS set resources.jdbc-connection-pool.dvnDbPool.property.password='${ALIAS=db_password_alias}'
+       ./asadmin $ASADMIN_OPTS set resources.jdbc-connection-pool.dvnDbPool.property.password="${ALIAS=db_password_alias}"
 
         ###
         # Create data sources
