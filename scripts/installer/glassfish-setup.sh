@@ -61,7 +61,7 @@ function preliminary_setup()
       set -- $alias
       echo "AS_ADMIN_ALIASPASSWORD=$2" > /tmp/$1.txt
       ./asadmin $ASADMIN_OPTS create-password-alias --passwordfile /tmp/$1.txt $1
-      rm /tmp/$1.txt
+      #rm /tmp/$1.txt
   done
 
     ###
