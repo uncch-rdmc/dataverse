@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 # YOU (THE HUMAN USER) SHOULD NEVER RUN THIS SCRIPT DIRECTLY!
 # It should be run by higher-level installers. 
 # The following arguments should be passed to it 
