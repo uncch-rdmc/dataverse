@@ -64,7 +64,7 @@ Show Contents of a Dataverse
 
 |CORS| Lists all the DvObjects under dataverse ``id``. ::
 
-    GET http://$SERVER/api/dataverses/$id/contents
+``curl -H "X-Dataverse-key:$API_TOKEN" -X GET http://$SERVER/api/dataverses/$id/contents``
 
 
 Report the data (file) size of a Dataverse
