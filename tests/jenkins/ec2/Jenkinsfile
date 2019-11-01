@@ -19,7 +19,7 @@ pipeline {
         script {
           // if pull request originates from IQSS, CHANGE_FORK is undefined
           if (env.CHANGE_FORK) {
-            env.EC2_REPO = env.CHANGE_FORK + "/dataverse"
+            env.EC2_REPO = "https://github.com/" + env.CHANGE_FORK + "/dataverse"
           } else {
             env.EC2_REPO = env.GIT_URL
           }
