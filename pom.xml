@@ -13,6 +13,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <additionalparam>-Xdoclint:none</additionalparam>
+	<!-- skip jacoco instrumentation unless overridden -->
+	<jacoco.skip.instrument>true</jacoco.skip.instrument>
         <!-- Needed to avoid IDEA IDE compilation failures. See commits in GH #5059 -->
         <compilerArgument></compilerArgument>
         <project.timezone>UTC</project.timezone>
@@ -600,13 +602,6 @@
             <artifactId>opennlp-tools</artifactId>
             <version>1.9.1</version>
         </dependency>
-	<!-- code coverage -->
-        <dependency>
-	    <groupId>org.jacoco</groupId>
-	    <artifactId>org.jacoco.agent</artifactId>
-	    <version>${jacoco.version}</version>
-	    <classifier>runtime</classifier>
-        </dependency>
     </dependencies>
     <build>
         <!--        <testResources>
@@ -698,10 +693,14 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>jacoco-initialize</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
+                        <id>jacoco-instrument</id>
+			  <phase>package</phase>
+                            <goals>
+                              <goal>instrument</goal>
+                            </goals>
+			    <configuration>
+			      <skip>${jacoco.skip.instrument}</skip>
+			    </configuration>
                     </execution>
                     <execution>
                         <id>jacoco-site</id>
