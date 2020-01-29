@@ -40,7 +40,7 @@
         Jacoco 0.8.2 seems to break Netbeans code coverage integration so we'll use 0.8.1 instead.
         See https://github.com/jacoco/jacoco/issues/772 for discussion of how the XML changed.
         -->
-        <jacoco.version>0.8.1</jacoco.version>
+        <jacoco.version>0.8.5</jacoco.version>
     </properties>
     <!--Maven checks for dependendies from these repos in the order shown in the pom.xml
         This isn't well documented and seems to change between maven versions -MAD 4.9.4 -->
