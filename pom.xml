@@ -10,7 +10,10 @@
     <version>4.19</version>
     <packaging>war</packaging>
     <name>dataverse</name>
+    <url>https://dataverse.org</url>
     <properties>
+      <maven.compiler.source>1.8</maven.compiler.source>
+      <maven.compiler.target>1.8</maven.compiler.target>
       <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
       <additionalparam>-Xdoclint:none</additionalparam>
       <!-- skip jacoco instrumentation unless overridden -->
@@ -680,6 +683,31 @@
                 <datafile>${basedir}/target/coverage-reports/jacoco-unit.exec</datafile>
               </configuration>
               <executions>
+		<execution>
+	          <id>default-prepare-agent</id>
+		  <goals>
+		    <goal>prepare-agent</goal>
+		  </goals>
+		</execution>
+		<execution>
+		  <id>default-prepare-agent-integration</id>
+		  <goals>
+		    <goal>prepare-agent-integration</goal>
+	          </goals>
+		</execution>
+		<execution>
+		  <id>default-report-integration</id>
+		  <goals>
+	            <goal>report-integration</goal>
+		  </goals>
+		</execution>
+                <execution>
+	          <id>default-check</id>
+		  <goals>
+		    <goal>check</goal>
+		  </goals>
+		</execution>
+		<!--
                 <execution>
                   <id>jacoco-instrument</id>
                   <phase>package</phase>
@@ -697,6 +725,7 @@
                     <goal>report</goal>
                   </goals>
                 </execution>
+		-->
               </executions>
             </plugin>
             <plugin>
@@ -799,6 +828,19 @@
               <compilerArgument>${compilerArgument}</compilerArgument>
             </configuration>
           </plugin>
+	  <plugin>
+	    <groupId>org.apache.maven.plugins</groupId>
+	    <artifactId>maven-failsafe-plugin</artifactId>
+	    <version>2.16</version>
+	    <executions>
+	      <execution>
+		<default-integration-test</id>
+	        <goals>
+		  <goal>integration-test</goal>
+		</goals>
+	      </execution>
+	    </executions>
+	  </plugin>
         </plugins>
       </build>
     </profile>
