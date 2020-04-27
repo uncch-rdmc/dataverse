@@ -43,7 +43,7 @@
         Jacoco 0.8.2 seems to break Netbeans code coverage integration so we'll use 0.8.1 instead.
         See https://github.com/jacoco/jacoco/issues/772 for discussion of how the XML changed.
         -->
-        <jacoco.version>0.8.1</jacoco.version>
+        <jacoco.version>0.8.5</jacoco.version>
     </properties>
     <pluginRepositories>
         <pluginRepository>
