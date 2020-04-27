@@ -721,16 +721,29 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>jacoco-initialize</id>
+                        <id>jacoco-initialize-unit</id>
+			<phase>initialize</phase>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
                     </execution>
                     <execution>
-                        <id>jacoco-site</id>
-                        <phase>package</phase>
+		        <id>jacoco-initialize-integration</id>
+			<goals>
+                            <goal>prepare-agent-integration</goal>
+                        </goals>
+		    </execution>
+                    <execution>
+                        <id>jacoco-report-unit</id>
+                        <phase>prepare-package</phase>
                         <goals>
                             <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report-integration</id>
+                        <goals>
+                            <goal>report-integration</goal>
                         </goals>
                     </execution>
                 </executions>
