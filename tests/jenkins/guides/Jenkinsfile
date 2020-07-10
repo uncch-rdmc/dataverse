@@ -4,9 +4,6 @@ pipeline {
   stages {
 
     stage('Build') {
-      when {
-	{ expression { return sourceChanged(doc/shinx-guides/) } }
-      }
       steps {
 	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
 	sh 'make clean'
@@ -16,9 +13,6 @@ pipeline {
     }
 
     stage('Test') {
-      when {
-	{ expression { return sourceChanged(doc/shinx-guides/) } }
-      }
       steps {
 	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
 	sh 'make doctest'
@@ -26,9 +20,6 @@ pipeline {
     }
 
     stage('Post') {
-      when {
-	{ expression { return sourceChanged(doc/shinx-guides/) } }
-      }
       steps {
 	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
 	sh 'cp build/epub/Dataverse.epub build/html'
