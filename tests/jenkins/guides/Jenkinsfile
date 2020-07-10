@@ -12,8 +12,6 @@ pipeline {
     }
 
     stage('Test') {
-      steps {
-      }
     }
 
     stage('Post') {
