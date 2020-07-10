@@ -8,10 +8,10 @@ pipeline {
 	changeset "doc/sphinx-guides/**"
       }
       steps {
-	cd ${WORKSPACE}/doc/sphinx-guides/
-	make clean
-	make html
-	make epub
+	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
+	sh 'make clean'
+	sh 'make html'
+	sh 'make epub'
       }
     }
 
@@ -20,8 +20,8 @@ pipeline {
 	changeset "doc/sphinx-guides/**"
       }
       steps {
-	cd ${WORKSPACE}/doc/sphinx-guides/
-	make doctest
+	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
+	sh 'make doctest'
       }
     }
 
@@ -30,9 +30,9 @@ pipeline {
 	changeset "doc/sphinx-guides/**"
       }
       steps {
-	cd ${WORKSPACE}/doc/sphinx-guides/
-	cp build/epub/Dataverse.epub build/html
-	zip -r ${WORKSPACE}/${CHANGE_BRANCH}.zip ./
+	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
+	sh 'cp build/epub/Dataverse.epub build/html'
+	sh 'zip -r ${WORKSPACE}/${CHANGE_BRANCH}.zip ./'
       }
     }
   }
