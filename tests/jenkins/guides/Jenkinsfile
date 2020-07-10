@@ -5,7 +5,7 @@ pipeline {
 
     stage('Build') {
       steps {
-	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
+	sh 'cd doc/sphinx-guides/'
 	sh 'make clean'
 	sh 'make html'
 	sh 'make epub'
@@ -14,14 +14,14 @@ pipeline {
 
     stage('Test') {
       steps {
-	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
+	sh 'cd doc/sphinx-guides/'
 	sh 'make doctest'
       }
     }
 
     stage('Post') {
       steps {
-	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
+	sh 'cd doc/sphinx-guides/'
 	sh 'cp build/epub/Dataverse.epub build/html'
 	sh 'zip -r ${WORKSPACE}/${CHANGE_BRANCH}.zip ./'
       }
