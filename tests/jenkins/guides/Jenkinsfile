@@ -5,7 +5,7 @@ pipeline {
 
     stage('Build') {
       when {
-	changeset "doc/sphinx-guides/**"
+	{ expression { return sourceChanged(doc/shinx-guides/) } }
       }
       steps {
 	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
@@ -17,7 +17,7 @@ pipeline {
 
     stage('Test') {
       when {
-	changeset "doc/sphinx-guides/**"
+	{ expression { return sourceChanged(doc/shinx-guides/) } }
       }
       steps {
 	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
@@ -27,7 +27,7 @@ pipeline {
 
     stage('Post') {
       when {
-	changeset "doc/sphinx-guides/**"
+	{ expression { return sourceChanged(doc/shinx-guides/) } }
       }
       steps {
 	sh 'cd ${WORKSPACE}/doc/sphinx-guides/'
