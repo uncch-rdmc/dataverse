@@ -13,7 +13,6 @@ pipeline {
 
     stage('Test') {
       steps {
-	sh 'cd doc/sphinx-guides/ && make doctest'
       }
     }
 
