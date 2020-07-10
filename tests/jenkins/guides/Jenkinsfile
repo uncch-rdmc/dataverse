@@ -11,9 +11,6 @@ pipeline {
       }
     }
 
-    stage('Test') {
-    }
-
     stage('Post') {
       steps {
 	sh 'cd doc/sphinx-guides/ && cp build/epub/Dataverse.epub build/html'
