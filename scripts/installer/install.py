@@ -29,6 +29,7 @@ longOptions = ["verbose",
                "skip_db_setup", 
                "nogfpasswd", 
                "hostname=", 
+               "site_url=",
                "gfuser=", 
                "gfdir=", 
                "mailserver=", 
@@ -43,6 +44,7 @@ pgOnly=False
 skipDatabaseSetup=False
 noGlassfishPassword=False
 hostName=""
+siteUrl=""
 gfUser=""
 gfDir=""
 mailServer=""
@@ -75,6 +77,8 @@ for currentArgument, currentValue in parsedArguments:
       noGlassfishPassword=True
    elif currentArgument in ("--hostname"):
       hostName=currentValue
+   elif currentArgument in ("--site_url"):
+      siteUrl=currentValue
    elif currentArgument in ("--gfuser"):
       gfUser=currentValue
    elif currentArgument in ("--gfdir"):
@@ -147,12 +151,15 @@ else:
 if hostName != "":
    config.set('glassfish', 'HOST_DNS_ADDRESS', hostName)
 else:
-   # (@todo? skip this if in --noninteractive mode? i.e., just use what's in default.config?)
-   try:
-      hostNameFromCommand = subprocess.check_output(["hostname"]).decode().rstrip()
-      config.set('glassfish', 'HOST_DNS_ADDRESS', hostNameFromCommand)
-   except:
-      print("Warning! Failed to execute \"hostname\"; assuming \"" + config.get('glassfish', 'HOST_DNS_ADDRESS') + "\"")
+   if nonInteractive:
+      hostName = config.get('glassfish', 'HOST_DNS_ADDRESS')
+      print("found default.config hostname: " + hostName)
+   else:
+      try:
+         hostNameFromCommand = subprocess.check_output(["hostname"]).decode().rstrip()
+         config.set('glassfish', 'HOST_DNS_ADDRESS', hostNameFromCommand)
+      except:
+         print("Warning! Failed to execute \"hostname\"; assuming \"" + config.get('glassfish', 'HOST_DNS_ADDRESS') + "\"")
 
 # 0c. current OS user. 
 # try to get the current username from the environment; the first one we find wins:
@@ -217,6 +224,14 @@ if gfDir != "":
       config.set('glassfish', 'GLASSFISH_DIRECTORY', gfDir)
    else:
       sys.exit("Invalid Payara directory: "+gfDir+". Please specify a valid Payara directory.")
+
+if siteUrl != "":
+   print("using siteUrl: "+siteUrl)
+   config.set('glassfish', 'SITE_URL', siteUrl)
+else:
+   if nonInteractive:
+      siteUrl = config.get('glassfish', 'SITE_URL')
+      print("using default.config siteUrl: " + siteUrl)
 
 # 0e. current working directory:
 # @todo - do we need it still?
@@ -368,6 +383,7 @@ pgPassword = config.get('database', 'POSTGRES_PASSWORD')
 pgUser = config.get('database', 'POSTGRES_USER')
 # app. server (payara) settings:
 hostName = config.get('glassfish', 'HOST_DNS_ADDRESS')
+siteUrl = config.get('glassfish', 'SITE_URL')
 gfDir = config.get('glassfish', 'GLASSFISH_DIRECTORY')
 gfUser = config.get('glassfish', 'GLASSFISH_USER')
 gfConfig = gfDir+"/glassfish/domains/domain1/config/domain.xml"
