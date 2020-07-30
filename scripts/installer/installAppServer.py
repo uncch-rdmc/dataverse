@@ -10,6 +10,7 @@ def runAsadminScript(config):
    os.environ['ASADMIN_OPTS'] = "";
 
    os.environ['HOST_ADDRESS'] = config.get('glassfish','HOST_DNS_ADDRESS')
+   os.environ['SITE_URL'] = config.get('glassfish','SITE_URL')
    os.environ['GLASSFISH_ROOT'] = config.get('glassfish','GLASSFISH_DIRECTORY')
    os.environ['MEM_HEAP_SIZE'] = config.get('glassfish','GLASSFISH_HEAP')
    os.environ['GLASSFISH_REQUEST_TIMEOUT'] = config.get('glassfish','GLASSFISH_REQUEST_TIMEOUT')
