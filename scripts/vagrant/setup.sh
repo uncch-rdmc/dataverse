@@ -4,7 +4,7 @@ echo "Installing dependencies for Dataverse"
 # python3 and psycopg2 for the Dataverse installer
 dnf install -qy python3 python3-psycopg2
 
-# Add JQ
+# Add JQ (TODO: just install this from EPEL?)
 echo "Installing jq for the setup scripts"
 wget -q http://stedolan.github.io/jq/download/linux64/jq
 chmod +x jq
@@ -13,8 +13,6 @@ sudo mv jq /usr/bin/jq
 
 echo "Adding Shibboleth yum repo"
 cp /dataverse/conf/vagrant/etc/yum.repos.d/shibboleth.repo /etc/yum.repos.d
-# maven is included in CentOS8 @System, just install it below
-#cp /dataverse/conf/vagrant/etc/yum.repos.d/epel-apache-maven.repo /etc/yum.repos.d
 # Uncomment this (and other shib stuff below) if you want
 # to use Vagrant (and maybe PageKite) to test Shibboleth.
 #yum install -y shibboleth shibboleth-embedded-ds
@@ -22,15 +20,14 @@ cp /dataverse/conf/vagrant/etc/yum.repos.d/shibboleth.repo /etc/yum.repos.d
 # java configuration et al
 dnf install -qy java-1.8.0-openjdk-headless maven httpd mod_ssl unzip
 alternatives --set java /usr/lib/jvm/jre-1.8.0-openjdk/bin/java
-# do we need javac? it's tied to package version...
+# do we need javac? the symlink is tied to package version...
 # /etc/alternatives/javac -> /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.262.b10-0.el8_2.x86_64/bin/javac
 #alternatives --set javac /usr/lib/jvm/java-1.8.0-openjdk.x86_64/bin/javac
 java -version
 #javac -version
 
-# disable centos8 postgresql module
+# disable centos8 postgresql module and install postgresql10-server
 dnf -qy module disable postgresql
-# install postgresql-10
 dnf install -qy https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 dnf install -qy postgresql10-server
 /usr/pgsql-10/bin/postgresql-10-setup initdb
@@ -54,14 +51,17 @@ if [ ! -f $PAYARA_ZIP ] || [ ! -f $SOLR_TGZ ]; then
     echo "Done running download script."
 fi
 PAYARA_USER_HOME=~dataverse
-PAYARA_ROOT=$PAYARA_USER_HOME/payara5
+PAYARA_ROOT=/usr/local/payara5
 if [ ! -d $PAYARA_ROOT ]; then
   echo "Copying $PAYARA_ZIP to $PAYARA_USER_HOME and unzipping"
   su $PAYARA_USER -s /bin/sh -c "cp $PAYARA_ZIP $PAYARA_USER_HOME"
   su $PAYARA_USER -s /bin/sh -c "cd $PAYARA_USER_HOME && unzip -q $PAYARA_ZIP"
+  # default.config defaults to /usr/local/payara5 so let's go with that
+  rsync -a $PAYARA_USER_HOME/payara5/ $PAYARA_ROOT/
 else
   echo "$PAYARA_ROOT already exists"
 fi
+
 #service shibd start
 /usr/bin/systemctl stop httpd
 cp /dataverse/conf/httpd/conf.d/dataverse.conf /etc/httpd/conf.d/dataverse.conf
@@ -79,6 +79,7 @@ cp /dataverse/conf/vagrant/var/www/dataverse/error-documents/503.html /var/www/d
 #service shibd restart
 #curl -k --sslv3 https://pdurbin.pagekite.me/Shibboleth.sso/Metadata > /downloads/pdurbin.pagekite.me
 #service httpd restart
+
 echo "#########################################################################################"
 echo "# This is a Vagrant test box, so we're disabling firewalld. 			      #
 echo "# Re-enable it with $ sudo systemctl enable firewalld && sudo systemctl start firewalld #"

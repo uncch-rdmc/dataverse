@@ -16,15 +16,7 @@ cd /dataverse/scripts/installer
 # move any pre-existing `default.config` file out of the way to avoid overwriting
 pid=$$
 if [ -e default.config ]; then
-	mv default.config tmp-${pid}-default.config
-fi
-
-# FIXME: The default.config format changed in https://github.com/IQSS/dataverse/pull/6809
-echo "HOST_DNS_ADDRESS	localhost" > default.config
-echo "GLASSFISH_DIRECTORY	/home/dataverse/payara5" >> default.config
-
-if [ ! -z "$MAILSERVER" ]; then
-	echo "MAIL_SERVER	$MAILSERVER" >> default.config
+	cp default.config tmp-${pid}-default.config
 fi
 
 # Switch to newer Python-based installer
