@@ -4,23 +4,23 @@
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box = "bento/centos-7.7"
+  config.vm.box = "bento/centos-8.2"
 
-  puts "Sorry, this Vagrant environment is not working."
-  puts "If you'd like to help get it working, please see"
-  puts "https://github.com/IQSS/dataverse/issues/6849"
-  puts
-  puts "You can also try the Vagrant environment at"
-  puts "https://github.com/GlobalDataverseCommunityConsortium/dataverse-ansible"
-  exit 1
+  #puts "Sorry, this Vagrant environment is not working."
+  #puts "If you'd like to help get it working, please see"
+  #puts "https://github.com/IQSS/dataverse/issues/6849"
+  #puts
+  #puts "You can also try the Vagrant environment at"
+  #puts "https://github.com/GlobalDataverseCommunityConsortium/dataverse-ansible"
+  #exit 1
 
   config.vm.provider "virtualbox" do |vbox|
     vbox.cpus = 4
     vbox.memory = 4096
   end
 
-  #config.vm.provision "shell", path: "scripts/vagrant/setup.sh"
-  #config.vm.provision "shell", path: "scripts/vagrant/setup-solr.sh"
+  config.vm.provision "shell", path: "scripts/vagrant/setup.sh"
+  config.vm.provision "shell", path: "scripts/vagrant/setup-solr.sh"
   config.vm.provision "shell", path: "scripts/vagrant/install-dataverse.sh"
 
   config.vm.network "private_network", type: "dhcp"

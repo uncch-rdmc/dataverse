@@ -1,5 +1,6 @@
 #!/bin/bash
 echo "Setting up Solr"
+dnf install -qy lsof
 SOLR_USER=solr
 SOLR_HOME=/usr/local/solr
 mkdir $SOLR_HOME

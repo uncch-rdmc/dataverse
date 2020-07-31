@@ -7,9 +7,9 @@ fi
 WAR=/dataverse/target/dataverse*.war
 if [ ! -f $WAR ]; then
   echo "no war file found... building"
-  echo "Installing nss on CentOS 6 to avoid java.security.KeyException while building war file: https://github.com/IQSS/dataverse/issues/2744"
-  yum install -y nss
-  su $SUDO_USER -s /bin/sh -c "cd /dataverse && mvn package"
+  #echo "Installing nss on CentOS 6 to avoid java.security.KeyException while building war file: https://github.com/IQSS/dataverse/issues/2744"
+  #yum install -y nss
+  su $SUDO_USER -s /bin/sh -c "cd /dataverse && mvn --no-transfer-progress package"
 fi
 cd /dataverse/scripts/installer
 
@@ -27,8 +27,8 @@ if [ ! -z "$MAILSERVER" ]; then
 	echo "MAIL_SERVER	$MAILSERVER" >> default.config
 fi
 
-# FIXME: Switch to newer Python-based installer
-./install -y -f
+# Switch to newer Python-based installer
+python3 ./install.py --noninteractive --config_file="default.config"
 
 if [ -e tmp-${pid}-default.config ]; then # if we moved it out, move it back
 	mv -f tmp-${pid}-default.config default.config
