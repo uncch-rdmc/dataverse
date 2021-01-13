@@ -43,7 +43,7 @@
         Jacoco 0.8.2 seems to break Netbeans code coverage integration so we'll use 0.8.1 instead.
         See https://github.com/jacoco/jacoco/issues/772 for discussion of how the XML changed.
         -->
-        <jacoco.version>0.8.1</jacoco.version>
+        <jacoco.version>0.8.6</jacoco.version>
     </properties>
     <pluginRepositories>
         <pluginRepository>
@@ -829,7 +829,7 @@
               <version>3.8.0</version>
               <configuration>
                 <source>11</source>
-                <!-- <target>11</target> -->
+                <target>11</target>
                 <!-- for use with `mvn -DcompilerArgument=-Xlint:unchecked compile` -->
                 <compilerArgument>${compilerArgument}</compilerArgument>
               </configuration>
