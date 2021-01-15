@@ -256,7 +256,6 @@ public class DatasetFieldServiceApi extends AbstractApiBean {
             while ((line = br.readLine()) != null) {
                 lineNumber++;
                 values = line.split(splitBy);
-                String[] values = line.split(splitBy);
                 if (values[0].startsWith("#")) { // Header row
                     switch (values[0]) {
                         case "#metadataBlock":
