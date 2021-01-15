@@ -356,7 +356,6 @@ public class DatasetFieldServiceApi extends AbstractApiBean {
                                                  int wrongIndex) {
 
         List<String> columns = getColumnsByHeader(header);
-        int wrongIndex = Integer.parseInt(e.getMessage());
 
         String column = columns.get(wrongIndex - 1);
         List<String> arguments = new ArrayList<>();
