@@ -4,6 +4,7 @@
    contain the root `toctree` directive.
 
 blargle blargle bloop bloop
+blargle blargle bloop bloop
 
 Dataverse Documentation v. |version|
 ====================================
