@@ -9,4 +9,5 @@ jobs:
     - uses: actions/checkout@v1
     - uses: ammaraskar/sphinx-action@master
       with:
+        build-command: "sphinx-build -b html -d build/doctrees  --keep-going --no-color -w "/tmp/sphinx-log" source build/html"
         docs-folder: "doc/sphinx-guides/"
