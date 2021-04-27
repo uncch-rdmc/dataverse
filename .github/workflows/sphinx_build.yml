@@ -9,5 +9,5 @@ jobs:
     - uses: actions/checkout@v1
     - uses: ammaraskar/sphinx-action@master
       with:
-        pre-build-command: "rm -f requirements.txt"
         docs-folder: "doc/sphinx-guides/"
+        build_command: "sphinx-build -b html -W build/html"
