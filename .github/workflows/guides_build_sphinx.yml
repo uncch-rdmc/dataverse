@@ -9,4 +9,4 @@ jobs:
     - uses: actions/checkout@v2
     - uses: ammaraskar/sphinx-action@master
       with:
-        docs-folder: "doc/sphinx-guides/source/"
+        docs-folder: "doc/sphinx-guides/"
