@@ -41,7 +41,8 @@ echo "building container"
 $DOCKERCMD build -t dataverse-jenkins $SCRIPT_DIR $PR_REPO_STR $PR_BRANCH_STR
 
 echo "running container"
-$DOCKERCMD run --mount type=bind,source=${HOME}/.m2,target=/.m2 --name $CONTAINER dataverse-jenkins:latest
+mkdir $SCRIPT_DIR/.m2
+$DOCKERCMD run --mount type=bind,source=$SCRIPT_DIR/.m2,target=/.m2 --name $CONTAINER dataverse-jenkins:latest
 
 /bin/mkdir -p ./target
 $DOCKERCMD cp $CONTAINER:/dataverse/target/classes $SCRIPT_DIR/target/
