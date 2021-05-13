@@ -45,10 +45,10 @@ mkdir -p $SCRIPT_DIR/.m2
 $DOCKERCMD run --mount type=bind,source=$SCRIPT_DIR/.m2,target=/.m2 --name $CONTAINER dataverse-jenkins:latest
 
 /bin/mkdir -p ./target
-$DOCKERCMD cp $CONTAINER:/dataverse/target/classes $SCRIPT_DIR/target/
-$DOCKERCMD cp $CONTAINER:/dataverse/target/coverage-it $SCRIPT_DIR/target/
-$DOCKERCMD cp $CONTAINER:/dataverse/target/jacoco_merged.exec $SCRIPT_DIR/target/
-$DOCKERCMD cp $CONTAINER:/dataverse/target/site $SCRIPT_DIR/target/
-$DOCKERCMD cp $CONTAINER:/dataverse/target/surefire-reports $SCRIPT_DIR/target/
+$DOCKERCMD cp $CONTAINER:/dataverse/target/classes ./target/
+$DOCKERCMD cp $CONTAINER:/dataverse/target/coverage-it ./target/
+$DOCKERCMD cp $CONTAINER:/dataverse/target/jacoco_merged.exec ./target/
+$DOCKERCMD cp $CONTAINER:/dataverse/target/site ./target/
+$DOCKERCMD cp $CONTAINER:/dataverse/target/surefire-reports ./target/
 
 $DOCKERCMD rm $CONTAINER
