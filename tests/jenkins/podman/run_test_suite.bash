@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 DOCKERCMD="/usr/bin/podman"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
