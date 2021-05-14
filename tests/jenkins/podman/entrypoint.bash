@@ -129,6 +129,7 @@ echo "merging code coverage reports"
 /usr/bin/java -jar /jacoco/lib/jacococli.jar merge /usr/local/payara5/glassfish/domains/domain1/config/jacoco.exec /dataverse/target/jacoco.exec --destfile /dataverse/target/jacoco_merged.exec
 
 echo "writing code coverage reports"
+mkdir -p /dataverse/target/coverage-it
 /usr/bin/java -jar /jacoco/lib/jacococli.jar report --classfiles /dataverse/target/classes --sourcefiles /dataverse/src/main/java --html /dataverse/target/coverage-it /dataverse/target/jacoco_merged.exec
 echo ""
 
