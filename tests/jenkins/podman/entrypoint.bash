@@ -133,6 +133,6 @@ mkdir -p /dataverse/target/coverage-it
 /usr/bin/java -jar /jacoco/lib/jacococli.jar report --classfiles /dataverse/target/classes --sourcefiles /dataverse/src/main/java --html /dataverse/target/coverage-it /dataverse/target/jacoco_merged.exec
 echo ""
 
-echo "test suite finished, shutting down."
+echo "test suite finished, container exiting."
 # uncomment this to keep the container alive
-sleep infinity
+#sleep infinity
