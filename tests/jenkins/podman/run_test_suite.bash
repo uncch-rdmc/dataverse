@@ -52,4 +52,4 @@ $DOCKERCMD cp $CONTAINER:/dataverse/target/site ./target/
 $DOCKERCMD cp $CONTAINER:/dataverse/target/src ./target/
 $DOCKERCMD cp $CONTAINER:/dataverse/target/surefire-reports ./target/
 
-$DOCKERCMD rm $CONTAINER
+#$DOCKERCMD rm $CONTAINER
