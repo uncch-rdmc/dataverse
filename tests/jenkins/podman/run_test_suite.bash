@@ -49,7 +49,7 @@ $DOCKERCMD cp $CONTAINER:/dataverse/target/jacoco_merged.exec target/jacoco_merg
 $DOCKERCMD cp $CONTAINER:/dataverse/target/classes/ target/classes/
 $DOCKERCMD cp $CONTAINER:/dataverse/target/coverage-it/ target/coverage-it/
 $DOCKERCMD cp $CONTAINER:/dataverse/target/site/ target/site/
-$DOCKERCMD cp $CONTAINER:/dataverse/target/src/ target/src/
+$DOCKERCMD cp $CONTAINER:/dataverse/src/ src/
 $DOCKERCMD cp $CONTAINER:/dataverse/target/surefire-reports/ target/surefire-reports/
 
 #$DOCKERCMD rm $CONTAINER
