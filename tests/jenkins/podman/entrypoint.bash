@@ -134,4 +134,4 @@ echo ""
 
 echo "test suite finished, shutting down."
 # uncomment this to keep the container alive
-#sleep infinity
+sleep infinity
