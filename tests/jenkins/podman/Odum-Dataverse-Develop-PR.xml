@@ -24,7 +24,7 @@
         <source class="org.jenkinsci.plugins.github_branch_source.GitHubSCMSource" plugin="github-branch-source@2.10.4">
           <id>d8055c67-985a-4889-8979-4e07a0477463</id>
           <apiUri>https://api.github.com</apiUri>
-          <credentialsId>f19a9f49-124d-4c48-9a9d-1c96fd929fea</credentialsId>
+          <credentialsId>redacted</credentialsId>
           <repoOwner>OdumInstitute</repoOwner>
           <repository>dataverse</repository>
           <repositoryUrl>https://github.com/OdumInstitute/dataverse.git</repositoryUrl>
