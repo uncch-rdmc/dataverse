@@ -12,8 +12,8 @@ pipeline {
           } else {
             env.PR_REPO = env.GIT_URL
           }
-          env.PR_BRANCH = env.CHANGE_BRANCH
         }
+        env.PR_BRANCH = env.CHANGE_BRANCH
 	// clean plate
         sh 'rm -rf target/*'
         // do work
