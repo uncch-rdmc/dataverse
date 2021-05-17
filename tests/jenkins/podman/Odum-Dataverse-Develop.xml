@@ -1,0 +1,142 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>builds develop branch</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.33.1">
+      <projectUrl>https://github.com/OdumInstitute/dataverse/</projectUrl>
+      <displayName></displayName>
+    </com.coravy.hudson.plugins.github.GithubProjectProperty>
+    <jenkins.branch.RateLimitBranchProperty_-JobPropertyImpl plugin="branch-api@2.6.4">
+      <durationName>minute</durationName>
+      <count>1</count>
+      <userBoost>false</userBoost>
+    </jenkins.branch.RateLimitBranchProperty_-JobPropertyImpl>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.7.1">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>https://github.com/OdumInstitute/dataverse.git</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/podman</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="empty-list"/>
+    <extensions/>
+  </scm>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+# clean slate
+rm -rf target/*
+
+./tests/jenkins/podman/run_test_suite.bash</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.49">
+      <testResults>target/surefire-reports/*.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <healthScaleFactor>1.0</healthScaleFactor>
+      <allowEmptyResults>false</allowEmptyResults>
+      <skipPublishingChecks>false</skipPublishingChecks>
+      <checksName></checksName>
+    </hudson.tasks.junit.JUnitResultArchiver>
+    <io.jenkins.plugins.analysis.core.steps.IssuesRecorder plugin="warnings-ng@9.1.0">
+      <analysisTools>
+        <io.jenkins.plugins.analysis.warnings.MavenConsole>
+          <id></id>
+          <name></name>
+          <pattern></pattern>
+          <reportEncoding></reportEncoding>
+          <skipSymbolicLinks>false</skipSymbolicLinks>
+        </io.jenkins.plugins.analysis.warnings.MavenConsole>
+      </analysisTools>
+      <sourceCodeEncoding></sourceCodeEncoding>
+      <sourceDirectory></sourceDirectory>
+      <ignoreQualityGate>false</ignoreQualityGate>
+      <ignoreFailedBuilds>true</ignoreFailedBuilds>
+      <failOnError>false</failOnError>
+      <healthy>0</healthy>
+      <unhealthy>0</unhealthy>
+      <minimumSeverity plugin="analysis-model-api@10.2.5">
+        <name>LOW</name>
+      </minimumSeverity>
+      <filters/>
+      <isEnabledForFailure>false</isEnabledForFailure>
+      <isAggregatingResults>false</isAggregatingResults>
+      <isBlameDisabled>false</isBlameDisabled>
+      <skipPublishingChecks>false</skipPublishingChecks>
+      <publishAllIssues>false</publishAllIssues>
+      <qualityGates/>
+      <trendChartType>AGGREGATION_TOOLS</trendChartType>
+      <scm></scm>
+    </io.jenkins.plugins.analysis.core.steps.IssuesRecorder>
+    <hudson.plugins.jacoco.JacocoPublisher plugin="jacoco@3.1.1">
+      <execPattern>target/jacoco_merged.exec</execPattern>
+      <classPattern>target/classes</classPattern>
+      <sourcePattern>target/src/*/java</sourcePattern>
+      <sourceInclusionPattern>**/*.java,**/*.groovy,**/*.kt,**/*.kts</sourceInclusionPattern>
+      <sourceExclusionPattern></sourceExclusionPattern>
+      <inclusionPattern>**/*.class</inclusionPattern>
+      <exclusionPattern>**/*Test*.class</exclusionPattern>
+      <skipCopyOfSrcFiles>false</skipCopyOfSrcFiles>
+      <minimumInstructionCoverage>0</minimumInstructionCoverage>
+      <minimumBranchCoverage>0</minimumBranchCoverage>
+      <minimumComplexityCoverage>0</minimumComplexityCoverage>
+      <minimumLineCoverage>0</minimumLineCoverage>
+      <minimumMethodCoverage>0</minimumMethodCoverage>
+      <minimumClassCoverage>0</minimumClassCoverage>
+      <maximumInstructionCoverage>0</maximumInstructionCoverage>
+      <maximumBranchCoverage>0</maximumBranchCoverage>
+      <maximumComplexityCoverage>0</maximumComplexityCoverage>
+      <maximumLineCoverage>0</maximumLineCoverage>
+      <maximumMethodCoverage>0</maximumMethodCoverage>
+      <maximumClassCoverage>0</maximumClassCoverage>
+      <changeBuildStatus>false</changeBuildStatus>
+      <runAlways>false</runAlways>
+      <deltaInstructionCoverage>0</deltaInstructionCoverage>
+      <deltaBranchCoverage>0</deltaBranchCoverage>
+      <deltaComplexityCoverage>0</deltaComplexityCoverage>
+      <deltaLineCoverage>0</deltaLineCoverage>
+      <deltaMethodCoverage>0</deltaMethodCoverage>
+      <deltaClassCoverage>0</deltaClassCoverage>
+      <buildOverBuild>false</buildOverBuild>
+    </hudson.plugins.jacoco.JacocoPublisher>
+    <io.jenkins.plugins.coverage.CoveragePublisher plugin="code-coverage-api@1.3.2">
+      <adapters>
+        <io.jenkins.plugins.coverage.adapter.JacocoReportAdapter>
+          <path>target/site/jacoco/jacoco.xml</path>
+          <mergeToOneReport>false</mergeToOneReport>
+          <thresholds class="linked-list"/>
+        </io.jenkins.plugins.coverage.adapter.JacocoReportAdapter>
+      </adapters>
+      <globalThresholds class="linked-list"/>
+      <failUnhealthy>false</failUnhealthy>
+      <failUnstable>false</failUnstable>
+      <failNoReports>false</failNoReports>
+      <applyThresholdRecursively>false</applyThresholdRecursively>
+      <sourceFileResolver>
+        <level>NEVER_STORE</level>
+      </sourceFileResolver>
+      <calculateDiffForChangeRequests>false</calculateDiffForChangeRequests>
+      <failBuildIfCoverageDecreasedInChangeRequest>false</failBuildIfCoverageDecreasedInChangeRequest>
+      <skipPublishingChecks>false</skipPublishingChecks>
+    </io.jenkins.plugins.coverage.CoveragePublisher>
+  </publishers>
+  <buildWrappers/>
+</project>
