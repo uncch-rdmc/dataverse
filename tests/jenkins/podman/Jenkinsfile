@@ -4,15 +4,17 @@ pipeline {
   stages {
 
     stage('Build') {
-      steps {
-	// clean plate
-        sh 'rm -rf target/*'
+      script {
         // if pull request isn't from IQSS, CHANGE_FORK only provides org/user
         if (env.CHANGE_FORK) {
           env.PR_REPO = "https://github.com/" + env.CHANGE_FORK + "/dataverse"
         } else {
           env.PR_REPO = env.GIT_URL
         }
+      }
+      steps {
+	// clean plate
+        sh 'rm -rf target/*'
         // do work
         sh './tests/jenkins/podman/run_test_suite.bash -r ${PR_REPO} -b ${CHANGE_BRANCH}'
       }
