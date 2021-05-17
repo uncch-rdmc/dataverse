@@ -12,11 +12,12 @@ pipeline {
           } else {
             env.PR_REPO = env.GIT_URL
           }
+          env.PR_BRANCH = env.CHANGE_BRANCH
         }
 	// clean plate
         sh 'rm -rf target/*'
         // do work
-        sh './tests/jenkins/podman/run_test_suite.bash -r ${PR_REPO} -b ${CHANGE_BRANCH}'
+        sh './tests/jenkins/podman/run_test_suite.bash -r ${PR_REPO} -b ${PR_BRANCH}'
       }
     }
 
