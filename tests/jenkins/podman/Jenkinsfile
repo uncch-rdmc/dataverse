@@ -14,6 +14,7 @@ pipeline {
             env.PR_REPO = env.GIT_URL
           }
         }
+        echo "${env.getEnvironment()}"
 	// clean plate
         sh 'rm -rf target/*'
         // do work
