@@ -4,15 +4,15 @@ pipeline {
   stages {
 
     stage('Build') {
-      script {
-        // if pull request isn't from IQSS, CHANGE_FORK only provides org/user
-        if (env.CHANGE_FORK) {
-          env.PR_REPO = "https://github.com/" + env.CHANGE_FORK + "/dataverse"
-        } else {
-          env.PR_REPO = env.GIT_URL
-        }
-      }
       steps {
+        script {
+          // if pull request isn't from IQSS, CHANGE_FORK only provides org/user
+          if (env.CHANGE_FORK) {
+            env.PR_REPO = "https://github.com/" + env.CHANGE_FORK + "/dataverse"
+          } else {
+            env.PR_REPO = env.GIT_URL
+          }
+        }
 	// clean plate
         sh 'rm -rf target/*'
         // do work
