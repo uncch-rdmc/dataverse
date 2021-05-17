@@ -3,6 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+blargle blargle bloop bloop
+blargle blargle bloop bloop
+blargle blargle bloop bloop
+
 Dataverse Documentation v. |version|
 ====================================
 
