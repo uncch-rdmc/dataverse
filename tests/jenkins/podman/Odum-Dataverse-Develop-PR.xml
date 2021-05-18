@@ -1,8 +1,8 @@
 <?xml version='1.1' encoding='UTF-8'?>
 <org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject plugin="workflow-multibranch@2.24">
   <actions/>
-  <description>Odum-Dataverse-Develop-PR</description>
-  <displayName>Odum-Dataverse-Develop-PR</displayName>
+  <description>IQSS-Dataverse-Develop-PR</description>
+  <displayName>IQSS-Dataverse-Develop-PR</displayName>
   <properties/>
   <folderViews class="jenkins.branch.MultiBranchProjectViewHolder" plugin="branch-api@2.6.4">
     <owner class="org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject" reference="../.."/>
@@ -24,10 +24,9 @@
         <source class="org.jenkinsci.plugins.github_branch_source.GitHubSCMSource" plugin="github-branch-source@2.10.4">
           <id>d8055c67-985a-4889-8979-4e07a0477463</id>
           <apiUri>https://api.github.com</apiUri>
-          <credentialsId>redacted</credentialsId>
-          <repoOwner>OdumInstitute</repoOwner>
+          <repoOwner>IQSS</repoOwner>
           <repository>dataverse</repository>
-          <repositoryUrl>https://github.com/OdumInstitute/dataverse.git</repositoryUrl>
+          <repositoryUrl>https://github.com/IQSS/dataverse.git</repositoryUrl>
           <traits>
             <org.jenkinsci.plugins.github__branch__source.BranchDiscoveryTrait>
               <strategyId>2</strategyId>
