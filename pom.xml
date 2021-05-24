@@ -24,6 +24,7 @@
         -->
         <argLine>-Duser.timezone=${project.timezone} -Dfile.encoding=${project.build.sourceEncoding} -Duser.language=${project.language} -Duser.region=${project.region}</argLine>
         <skipUnitTests>false</skipUnitTests>
+        <skipIntegrationTests>true</skipIntegrationTests>
     
         <jakartaee-api.version>8.0.0</jakartaee-api.version>
         <payara.version>5.2020.6</payara.version>
@@ -808,7 +809,7 @@
             <id>dev</id>
             <activation>
                 <!-- https://stackoverflow.com/questions/11824328/default-build-profile-for-maven -->
-                <!-- We set dev to true to developers don't have to run non-essential tests over and over. -->
+                <!-- We set dev to true so developers don't have to run non-essential tests over and over. -->
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
@@ -817,8 +818,44 @@
         </profile>
         <profile>
             <id>all-unit-tests</id>
+            <properties>
+               <skipIntegrationTests>true</skipIntegrationTests>
+               <skipUnitTests>false</skipUnitTests>
+            </properties>
         </profile>
-        <!-- TODO: Add a profile to run API tests (integration tests that end in IT.java. See conf/docker-aio/run-test-suite.sh -->
+        <profile>
+            <id>all-integration-tests</id>
+            <activation>
+	        <activeByDefault>false</activeByDefault>
+	    </activation>
+            <properties>
+                <skipIntegrationTests>false</skipIntegrationTests>
+                <skipUnitTests>true</skipUnitTests>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>2.22.2</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+    	                        <configuration>
+    	                            <includes>
+                                        <include>**/*.java</include>
+                                    </includes>
+                                   <skipTests>${skip.integration.tests}</skipTests>
+	                        </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
       <profile>
         <id>Java9Plus</id>
         <activation>
