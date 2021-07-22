@@ -305,6 +305,7 @@ public class AddReplaceFileHelper{
      * @param chosenDataset
      * @param newFileName
      * @param newFileContentType
+     * @param newStorageIdentifier
      * @param newFileInputStream
      * @param optionalFileParams
      * @return 

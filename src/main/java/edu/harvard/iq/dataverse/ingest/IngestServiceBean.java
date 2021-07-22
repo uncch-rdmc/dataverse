@@ -100,6 +100,7 @@ import java.util.Comparator;
 import java.util.ListIterator;
 import java.util.logging.Logger;
 import java.util.Hashtable;
+import java.util.logging.Level;
 import javax.ejb.EJB;
 import javax.ejb.Stateless;
 import javax.inject.Named;
@@ -290,6 +291,7 @@ public class IngestServiceBean {
 					// Any necessary post-processing:
 					// performPostProcessingTasks(dataFile);
 				} else {
+            logger.log(Level.INFO, "driverType is not tmp case");
 					try {
 						StorageIO<DvObject> dataAccess = DataAccess.getStorageIO(dataFile);
 						//Populate metadata
@@ -316,10 +318,15 @@ public class IngestServiceBean {
 				} catch (IOException e) {
 					logger.warning("Error getting ingest limit for file: " + dataFile.getIdentifier() + " : " + e.getMessage());
 				} 
+        
+          logger.log(Level.INFO, "savedSuccess={0}", savedSuccess);
+          logger.log(Level.INFO, "belowLimit={0}", belowLimit);
+        
 				if (unattached) {
 					dataFile.setOwner(null);
 				}
 				if (savedSuccess && belowLimit) {
+            logger.log(Level.INFO, "savedSuccess/belowLimit case");
 					// These are all brand new files, so they should all have
 					// one filemetadata total. -- L.A.
 					FileMetadata fileMetadata = dataFile.getFileMetadatas().get(0);
@@ -327,6 +334,7 @@ public class IngestServiceBean {
 
 					boolean metadataExtracted = false;
 					if (FileUtil.canIngestAsTabular(dataFile)) {
+              logger.log(Level.INFO, "canIngestAsTabular case");
 						/*
 						 * Note that we don't try to ingest the file right away - instead we mark it as
 						 * "scheduled for ingest", then at the end of the save process it will be queued

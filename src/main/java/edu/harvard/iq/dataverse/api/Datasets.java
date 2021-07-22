@@ -1904,34 +1904,48 @@ public Response completeMPUpload(String partETagBody, @QueryParam("globalid") St
         String newFilename = null;
         String newFileContentType = null;
         String newStorageIdentifier = null;
-		if (null == contentDispositionHeader) {
-			if (optionalFileParams.hasStorageIdentifier()) {
-				newStorageIdentifier = optionalFileParams.getStorageIdentifier();
-				logger.fine("found: " + newStorageIdentifier);
-				String driverType = DataAccess.getDriverType(newStorageIdentifier.substring(0, newStorageIdentifier.indexOf(":")));
-				logger.fine("drivertype: " + driverType);
-				if(driverType.equals("http")) {
-					//Add a generated identifier for the aux files
-					logger.fine("in: " + newStorageIdentifier);
-					int lastColon = newStorageIdentifier.lastIndexOf("://");
-					newStorageIdentifier= newStorageIdentifier.substring(0,lastColon +3) + FileUtil.generateStorageIdentifier() + "//" +newStorageIdentifier.substring(lastColon+3);
-					logger.fine("out: " + newStorageIdentifier);
-				}
-				// ToDo - check that storageIdentifier is valid
-				if (optionalFileParams.hasFileName()) {
-					newFilename = optionalFileParams.getFileName();
-					if (optionalFileParams.hasMimetype()) {
-						newFileContentType = optionalFileParams.getMimeType();
-					}
-				}
-			} else {
-				return error(BAD_REQUEST,
-						"You must upload a file or provide a storageidentifier, filename, and mimetype.");
-			}
-		} else {
-			newFilename = contentDispositionHeader.getFileName();
-			newFileContentType = formDataBodyPart.getMediaType().toString();
-		}
+        if (null == contentDispositionHeader) {
+            logger.log(Level.INFO, "This is Jim's modification: no datafile uploaded");
+            if (optionalFileParams.hasStorageIdentifier()) {
+                logger.log(Level.INFO, "payload has a storageIdentifier");
+                newStorageIdentifier = optionalFileParams.getStorageIdentifier();
+                logger.log(Level.INFO, "newStorageIdentifier will be set to={0}", newStorageIdentifier);
+                logger.fine("found: " + newStorageIdentifier);
+                String driverType = DataAccess.getDriverType(newStorageIdentifier.substring(0, newStorageIdentifier.indexOf(":")));
+                logger.fine("drivertype: " + driverType);
+                logger.log(Level.INFO, "driverType={0}", driverType);
+                if (driverType.equals("http")) {
+                    logger.log(Level.INFO, "driverType is http");
+                    
+                    //Add a generated identifier for the aux files
+                    logger.fine("in: " + newStorageIdentifier);
+                    int lastColon = newStorageIdentifier.lastIndexOf("://");
+                    newStorageIdentifier = newStorageIdentifier.substring(0, lastColon + 3) + FileUtil.generateStorageIdentifier() + "//" + newStorageIdentifier.substring(lastColon + 3);
+                    logger.log(Level.INFO, "after updated: newStorageIdentifier={0}", newStorageIdentifier);
+                    logger.fine("out: " + newStorageIdentifier);
+                }
+                // ToDo - check that storageIdentifier is valid
+                if (optionalFileParams.hasFileName()) {
+                    
+                    newFilename = optionalFileParams.getFileName();
+                    logger.log(java.util.logging.Level.INFO, "optionalFileParams has a fileName:{0}", newFilename);
+                    if (optionalFileParams.hasMimetype()) {
+                        newFileContentType = optionalFileParams.getMimeType();
+                        logger.log(java.util.logging.Level.INFO, "optionalFileParams has a MIME type:{0}", newFileContentType);
+                    }
+                } else {
+                    logger.log(java.util.logging.Level.INFO, "optionalFileParams lack a fileName");
+                }
+            } else {
+                logger.log(Level.WARNING, "\"payload lacks a storageIdentifier");
+                return error(BAD_REQUEST,
+                  "You must upload a file or provide a storageidentifier, filename, and mimetype.");
+            }
+        } else {
+            logger.log(Level.INFO, "Factory-default case: newFilename/newFileContentType");
+            newFilename = contentDispositionHeader.getFileName();
+            newFileContentType = formDataBodyPart.getMediaType().toString();
+        }
 
         
         //-------------------
