@@ -179,8 +179,7 @@ public class DataFile extends DvObject implements Comparable {
     
     
     @Expose
-    @Column(nullable = false)
-    private boolean notaryServiceBound=true;
+    private boolean notaryServiceBound;
     
     
     @Expose
