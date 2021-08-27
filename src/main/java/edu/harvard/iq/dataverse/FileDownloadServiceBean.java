@@ -180,13 +180,20 @@ public class FileDownloadServiceBean implements java.io.Serializable {
     public void writeGuestbookAndStartFileDownload(GuestbookResponse guestbookResponse, FileMetadata fileMetadata, String format) {
         logger.log(Level.INFO, "========== FileDownloadServiceBean#writeGuestbookAndStartFileDownload : start ==========");
         if(!fileMetadata.getDatasetVersion().isDraft()){
+            logger.log(Level.INFO, "not draft case");
             guestbookResponse = guestbookResponseService.modifyDatafileAndFormat(guestbookResponse, fileMetadata, format);
             writeGuestbookResponseRecord(guestbookResponse);
         }
         // trsa or not: dataset-wise
         boolean isTrsaCoupled = fileMetadata.getDatasetVersion().getDataset().isTrsaCoupled();
+        logger.log(Level.INFO, "isTrsaCoupled={0}", isTrsaCoupled);
         // datafile-wise
+        logger.log(Level.INFO, "isRestricted={0}",fileMetadata.getDataFile().isRestricted());
+        logger.log(Level.INFO, "checksumValue={0}",fileMetadata.getDataFile().getChecksumValue());
+        
         boolean isNSBound = fileMetadata.getDataFile().isNotaryServiceBound();
+        
+        logger.log(Level.INFO, "isNSBound={0}", isNSBound);
         if (!isTrsaCoupled){
             // convential cases 
             // Make sure to set the "do not write Guestbook response" flag to TRUE when calling the Access API:
