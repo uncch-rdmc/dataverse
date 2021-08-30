@@ -190,12 +190,8 @@ public class FileDownloadServiceBean implements java.io.Serializable {
         // datafile-wise
         logger.log(Level.INFO, "isRestricted={0}",fileMetadata.getDataFile().isRestricted());
         logger.log(Level.INFO, "checksumValue={0}",fileMetadata.getDataFile().getChecksumValue());
-        logger.log(Level.INFO, "direct-access: ns-bound={0}", fileMetadata.getDataFile().isNotaryServiceBound());
         boolean isNSBound = fileMetadata.getDataFile().isNotaryServiceBound();
         logger.log(Level.INFO, "isNSBound={0}", isNSBound);
-        DataFile dfl = fileMetadata.getDataFile();
-        logger.log(Level.INFO, "dfl:NS-bound={0}", dfl.isNotaryServiceBound());
-        
         
         if (!isTrsaCoupled){
             // convential cases 
@@ -206,7 +202,7 @@ public class FileDownloadServiceBean implements java.io.Serializable {
             logger.log(Level.INFO, "========== FileDownloadServiceBean#writeGuestbookAndStartFileDownload: TRSA case: start ==========");
             String fileDownloadUrl="";
             
-            if (dfl.isNotaryServiceBound()){
+            if (isNSBound){
                 // NS case: forwarding the NS server
                 logger.log(Level.INFO, "========== FileDownloadServiceBean#writeGuestbookAndStartFileDownload: NS case: start ==========");
                 logger.log(Level.INFO, "========== FileDownloadServiceBean#writeGuestbookAndStartFileDownload: NS case: end ==========");
@@ -233,7 +229,7 @@ public class FileDownloadServiceBean implements java.io.Serializable {
                 logger.log(Level.INFO, "nonNS case:fileDownloadUrl={0}", fileDownloadUrl);
                  
             }
-            logger.log(Level.INFO, "redirecting to the URL");
+            logger.log(Level.INFO, "redirecting to the URL={0}", fileDownloadUrl);
             
             try {
                 FacesContext.getCurrentInstance().getExternalContext().redirect(fileDownloadUrl);
