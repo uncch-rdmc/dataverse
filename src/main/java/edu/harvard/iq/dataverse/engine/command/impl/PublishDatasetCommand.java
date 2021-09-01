@@ -1,5 +1,6 @@
 package edu.harvard.iq.dataverse.engine.command.impl;
 
+import edu.harvard.iq.dataverse.DataFile;
 import edu.harvard.iq.dataverse.Dataset;
 import edu.harvard.iq.dataverse.DatasetLock;
 import edu.harvard.iq.dataverse.GlobalIdServiceBean;
@@ -22,6 +23,7 @@ import java.util.Optional;
 import java.util.logging.Logger;
 import static java.util.stream.Collectors.joining;
 import static edu.harvard.iq.dataverse.engine.command.impl.PublishDatasetResult.Status;
+import java.util.logging.Level;
 
 /**
  * Kick-off a dataset publication process. The process may complete immediately, 
@@ -68,6 +70,14 @@ public class PublishDatasetCommand extends AbstractPublishDatasetCommand<Publish
         //              When importing a released dataset, the latest version is marked as RELEASED.
 
         Dataset theDataset = getDataset();
+        
+        for (DataFile f: theDataset.getFiles()){
+            logger.log(Level.INFO, "========== PublishDatasetCommand#execute() method ============");
+            logger.log(Level.INFO, "fileId={0}", f.getId());
+            logger.log(Level.INFO, "content type={0}", f.getContentType());
+            logger.log(Level.INFO, "checksum value={0}", f.getChecksumValue());
+            logger.log(Level.INFO, "NS-bound={0}", f.isNotaryServiceBound());
+        }
 
         
         //ToDo - any reason to set the version in publish versus finalize? Failure in a prepub workflow or finalize will leave draft versions with an assigned version number as is.

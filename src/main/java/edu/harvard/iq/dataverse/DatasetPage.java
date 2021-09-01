@@ -611,6 +611,7 @@ public class DatasetPage implements java.io.Serializable {
         Set<Long> searchResultsIdSet = null;
 
         if (isIndexedVersion()) {
+            logger.log(Level.INFO, "========== selectFileMetadatasForDisplay: isIndexedVersion: yes");
             // We run the search even if no search term and/or facets are
             // specified - to generate the facet labels list:
             searchResultsIdSet = getFileIdsInVersionFromSolr(workingVersion.getId(), this.fileLabelSearchTerm);
@@ -628,6 +629,7 @@ public class DatasetPage implements java.io.Serializable {
             }
 
         } else {
+            logger.log(Level.INFO, "========== selectFileMetadatasForDisplay: isIndexedVersion: no");
             // No, this is not an indexed version.
             // If the search term was specified, we'll run a search in the db;
             // if not - return the full list of files in the version.
@@ -653,6 +655,12 @@ public class DatasetPage implements java.io.Serializable {
                 || ("desc".equals(fileSortOrder) || !("name".equals(fileSortField)))) {
             sortFileMetadatas(retList);
 
+        }
+        
+        for (FileMetadata fm: retList){
+            logger.log(Level.INFO, "fm:id={0}", fm.getDataFile().getId());
+            logger.log(Level.INFO, "fm:checksumValue={0}", fm.getDataFile().getChecksumValue());
+            logger.log(Level.INFO, "fm:NSBound={0}", fm.getDataFile().isNotaryServiceBound());
         }
 
         return retList;
@@ -1883,6 +1891,7 @@ public class DatasetPage implements java.io.Serializable {
                 }
                 // This will default to all the files in the version, if the search term
                 // parameter hasn't been specified yet:
+                logger.log(Level.INFO, "DatasetPage#init(): fileMetadatasSearch is to be filled");
                 fileMetadatasSearch = selectFileMetadatasForDisplay();
                 ownerId = dataset.getOwner().getId();
                 datasetNextMajorVersion = this.dataset.getNextMajorVersionString();
@@ -2005,7 +2014,7 @@ public class DatasetPage implements java.io.Serializable {
         }
         for(DataFile f : dataset.getFiles()) {
 
-            logger.log(Level.INFO, "========== Dataset#init() method ============");
+            logger.log(Level.INFO, "========== DatasetPage#init() method ============");
             logger.log(Level.INFO, "fileId={0}", f.getId());
             logger.log(Level.INFO, "content type={0}", f.getContentType());
             logger.log(Level.INFO, "checksum value={0}", f.getChecksumValue());
@@ -2675,7 +2684,7 @@ public class DatasetPage implements java.io.Serializable {
     }
 
     public String refresh() {
-        logger.fine("refreshing");
+        logger.info("DatasetPage#refreshing");
 
         //dataset = datasetService.find(dataset.getId());
         dataset = null;

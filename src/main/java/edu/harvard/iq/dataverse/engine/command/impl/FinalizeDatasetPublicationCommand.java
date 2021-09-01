@@ -179,6 +179,15 @@ public class FinalizeDatasetPublicationCommand extends AbstractPublishDatasetCom
             }
             theDataset.getLatestVersion().setVersionState(RELEASED);
         }
+        for (DataFile f: theDataset.getFiles()){
+            logger.log(Level.INFO, "========== PublishDatasetCommand#execute() method ============");
+            logger.log(Level.INFO, "fileId={0}", f.getId());
+            logger.log(Level.INFO, "content type={0}", f.getContentType());
+            logger.log(Level.INFO, "checksum value={0}", f.getChecksumValue());
+            logger.log(Level.INFO, "NS-bound={0}", f.isNotaryServiceBound());
+        }
+  
+  
         
         final Dataset ds = ctxt.em().merge(theDataset);
         //Remove any pre-pub workflow lock (not needed as WorkflowServiceBean.workflowComplete() should already have removed it after setting the finalizePublication lock?)
