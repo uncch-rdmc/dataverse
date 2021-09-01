@@ -548,9 +548,6 @@ public class SearchServiceBean {
                     logger.info("Exception setting setFileChecksumType: " + ex);
                 }
                 solrSearchResult.setFileChecksumValue((String) solrDocument.getFieldValue(SearchFields.FILE_CHECKSUM_VALUE));
-                
-                solrSearchResult.setFileNotaryServiceBound((Boolean) solrDocument.getFieldValue(SearchFields.FILE_NS_BOUND));
-                
                 solrSearchResult.setUnf((String) solrDocument.getFieldValue(SearchFields.UNF));
                 solrSearchResult.setDatasetVersionId(datasetVersionId);
                 List<String> fileCategories = (List) solrDocument.getFieldValues(SearchFields.FILE_TAG);

@@ -280,9 +280,7 @@ public class UpdateDatasetVersionCommand extends AbstractDatasetCommand<Dataset>
         Dataset dataset = (Dataset) r;
 
         try {
-            logger.log(Level.INFO, "start re-indexing for dataset whose id ={0}", dataset.getId());
             Future<String> indexString = ctxt.index().indexDataset(dataset, true);
-            
         } catch (IOException | SolrServerException e) {
             String failureLogText = "Post update dataset indexing failed. You can kickoff a re-index of this dataset with: \r\n curl http://localhost:8080/api/admin/index/datasets/" + dataset.getId().toString();
             failureLogText += "\r\n" + e.getLocalizedMessage();

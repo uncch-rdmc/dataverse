@@ -170,7 +170,6 @@ public class SearchFields {
     public static final String FILE_CHECKSUM_TYPE = "fileChecksumType";
     public static final String FILE_CHECKSUM_VALUE = "fileChecksumValue";
     public static final String FILENAME_WITHOUT_EXTENSION = "fileNameWithoutExtension";
-    public static final String FILE_NS_BOUND = "fileNotaryServiceBound";
     /**
      * Indexed as a string so we can facet on it.
      */

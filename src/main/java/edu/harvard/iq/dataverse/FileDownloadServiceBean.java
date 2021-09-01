@@ -184,14 +184,6 @@ public class FileDownloadServiceBean implements java.io.Serializable {
             guestbookResponse = guestbookResponseService.modifyDatafileAndFormat(guestbookResponse, fileMetadata, format);
             writeGuestbookResponseRecord(guestbookResponse);
         }
-        
-        logger.log(Level.INFO, "datasetversion={0}", fileMetadata.getDatasetVersion().getId());
-        logger.log(Level.INFO, "filemetadata.id={0}", fileMetadata.getId());
-        Long dfid = fileMetadata.getDataFile().getId();
-        logger.log(Level.INFO, "dfid={0}", dfid);
-        DataFile df = fileMetadata.getDatasetVersion().getDataset().getFiles().get(dfid.intValue());
-        logger.log(Level.INFO, "datafile via indirect={0}", df.getId());
-        logger.log(Level.INFO, "NSBound status={0}", df.isNotaryServiceBound());
         // trsa or not: dataset-wise
         boolean isTrsaCoupled = fileMetadata.getDatasetVersion().getDataset().isTrsaCoupled();
         logger.log(Level.INFO, "isTrsaCoupled={0}", isTrsaCoupled);

@@ -88,7 +88,6 @@ public class SolrSearchResult {
     private String fileChecksumValue;
     private String dataverseAlias;
     private String dataverseParentAlias;
-    private boolean fileNotaryServiceBound;
 //    private boolean statePublished;
     /**
      * @todo Investigate/remove this "unpublishedState" variable. For files that
@@ -158,14 +157,6 @@ public class SolrSearchResult {
 //        this.statePublished = statePublished;
 //    }
 
-    public boolean isFileNotaryServiceBound() {
-        return fileNotaryServiceBound;
-    }
-
-    public void setFileNotaryServiceBound(boolean fileNotaryServiceBound) {
-        this.fileNotaryServiceBound = fileNotaryServiceBound;
-    }
-    
     public boolean isPublishedState() {
         return publishedState;
     }
@@ -538,7 +529,6 @@ public class SolrSearchResult {
                 .add("file_type", this.filetype)
                 .add("file_content_type", this.fileContentType)
                 .add("size_in_bytes", getFileSizeInBytes())
-                .add("notaryServiceBound", isFileNotaryServiceBound())
                 /**
                  * "md5" was the only possible value so it's hard-coded here but
                  * we might want to deprecate it someday since we now put the
