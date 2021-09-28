@@ -2822,7 +2822,7 @@ An example JSON file would look like this:
 
 .. note:: See :ref:`curl-examples-and-environment-variables` if you are unfamiliar with the use of export below.
 
-.. code-block:: bashbloopbloopbloopbloopbloopbloop
+.. code-block:: bashbloopbloopbloopbloopbloopbloopbloop
 
   export API_TOKEN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
   export SERVER_URL=https://demo.dataverse.org
