@@ -55,6 +55,11 @@ public class HarvestingServerIT {
         String r = String.format("{\"name\":\"%s\",\"definition\":\"%s\"}", name, def);//description is optional
         return r;
     }
+    
+    private String jsonForEditSpec(String name, String def, String desc) {
+        String r = String.format("{\"name\":\"%s\",\"definition\":\"%s\",\"description\":\"%s\"}", name, def, desc);
+        return r;
+    }
 
     private String normalUserAPIKey;
     private String adminUserAPIKey;
@@ -67,6 +72,7 @@ public class HarvestingServerIT {
 
         // make sure the set does not exist
         String u0 = String.format("/api/harvest/server/oaisets/%s", setName);
+        String createPath ="/api/harvest/server/oaisets/";
         Response r0 = given()
                 .get(u0);
         assertEquals(404, r0.getStatusCode());
@@ -75,28 +81,98 @@ public class HarvestingServerIT {
         Response r1 = given()
                 .header(UtilIT.API_TOKEN_HTTP_HEADER, normalUserAPIKey)
                 .body(jsonForTestSpec(setName, def))
-                .post(u0);
+                .post(createPath);
         assertEquals(400, r1.getStatusCode());
 
         // try to create set as admin user, should succeed
         Response r2 = given()
                 .header(UtilIT.API_TOKEN_HTTP_HEADER, adminUserAPIKey)
                 .body(jsonForTestSpec(setName, def))
-                .post(u0);
+                .post(createPath);
         assertEquals(201, r2.getStatusCode());
 
         // try to create set with same name as admin user, should fail
         Response r3 = given()
                 .header(UtilIT.API_TOKEN_HTTP_HEADER, adminUserAPIKey)
                 .body(jsonForTestSpec(setName, def))
-                .post(u0);
+                .post(createPath);
         assertEquals(400, r3.getStatusCode());
 
         // try to export set as admin user, should succeed (under admin API, not checking that normal user will fail)
         Response r4 = UtilIT.exportOaiSet(setName);
         assertEquals(200, r4.getStatusCode());
+        
+        // try to delete as normal user  should fail
+        Response r5 = given()
+                .header(UtilIT.API_TOKEN_HTTP_HEADER, normalUserAPIKey)
+                .delete(u0);
+        logger.info("r5.getStatusCode(): " + r5.getStatusCode());
+        assertEquals(400, r5.getStatusCode());
+        
+        // try to delete as admin user  should work
+        Response r6 = given()
+                .header(UtilIT.API_TOKEN_HTTP_HEADER, adminUserAPIKey)
+                .delete(u0);
+        logger.info("r6.getStatusCode(): " + r6.getStatusCode());
+        assertEquals(200, r6.getStatusCode());
 
-        // TODO - get an answer to the question of if it's worth cleaning up (users, sets) or not
+    }
+    
+    @Test
+    public void testSetEdit() {
+        setupUsers();
+        String setName = UtilIT.getRandomString(6);
+        String def = "*";
+
+        // make sure the set does not exist
+        String u0 = String.format("/api/harvest/server/oaisets/%s", setName);
+        String createPath ="/api/harvest/server/oaisets/";
+        Response r0 = given()
+                .get(u0);
+        assertEquals(404, r0.getStatusCode());
+
+
+        // try to create set as admin user, should succeed
+        Response r1 = given()
+                .header(UtilIT.API_TOKEN_HTTP_HEADER, adminUserAPIKey)
+                .body(jsonForTestSpec(setName, def))
+                .post(createPath);
+        assertEquals(201, r1.getStatusCode());
+
+        
+        // try to edit as normal user  should fail
+        Response r2 = given()
+                .header(UtilIT.API_TOKEN_HTTP_HEADER, normalUserAPIKey)
+                .body(jsonForEditSpec(setName, def,""))
+                .put(u0);
+        logger.info("r2.getStatusCode(): " + r2.getStatusCode());
+        assertEquals(400, r2.getStatusCode());
+        
+        // try to edit as with blanks should fail
+        Response r3 = given()
+                .header(UtilIT.API_TOKEN_HTTP_HEADER, adminUserAPIKey)
+                .body(jsonForEditSpec(setName, "",""))
+                .put(u0);
+        logger.info("r3.getStatusCode(): " + r3.getStatusCode());
+        assertEquals(400, r3.getStatusCode());
+        
+        // try to edit as with something should pass
+        Response r4 = given()
+                .header(UtilIT.API_TOKEN_HTTP_HEADER, adminUserAPIKey)
+                .body(jsonForEditSpec(setName, "newDef","newDesc"))
+                .put(u0);
+        logger.info("r4 Status code: " + r4.getStatusCode());
+        logger.info("r4.prettyPrint(): " + r4.prettyPrint());
+        assertEquals(OK.getStatusCode(), r4.getStatusCode());
+        
+        logger.info("u0: " + u0);
+        // now delete it...
+        Response r6 = given()
+                .header(UtilIT.API_TOKEN_HTTP_HEADER, adminUserAPIKey)
+                .delete(u0);
+        logger.info("r6.getStatusCode(): " + r6.getStatusCode());
+        assertEquals(200, r6.getStatusCode());
+
     }
 
     // A more elaborate test - we'll create and publish a dataset, then create an
@@ -137,11 +213,11 @@ public class HarvestingServerIT {
         String setName = identifier;
         String setQuery = "dsPersistentId:" + identifier;
         String apiPath = String.format("/api/harvest/server/oaisets/%s", setName);
-
+        String createPath ="/api/harvest/server/oaisets/";
         Response createSetResponse = given()
                 .header(UtilIT.API_TOKEN_HTTP_HEADER, adminUserAPIKey)
                 .body(jsonForTestSpec(setName, setQuery))
-                .post(apiPath);
+                .post(createPath);
         assertEquals(201, createSetResponse.getStatusCode());
 
         // TODO: a) look up the set via native harvest/server api; 
