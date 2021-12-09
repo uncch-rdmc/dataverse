@@ -1521,6 +1521,20 @@ public class ImportDDIServiceBean {
            } else if (event == XMLStreamConstants.START_ELEMENT) {
                 if (xmlr.getLocalName().equals("p") || xmlr.getLocalName().equals("br") || xmlr.getLocalName().equals("head")) {
                     returnString += "<p>" + parseText(xmlr, xmlr.getLocalName()) + "</p>";
+		} else if (xmlr.getLocalName().equals("ul")) {
+	            returnString += "<ul>" + parseText(xmlr, xmlr.getLocalName());
+		} else if (xmlr.getLocalName().equals("/ul")) {
+		    returnString += parseText(xmlr, xmlr.getLocalName()) + "</ul>";
+		} else if (xmlr.getLocalName().equals("ol")) {
+		    returnString += "<ol>" + parseText(xmlr, xmlr.getLocalName());
+		} else if (xmlr.getLocalName().equals("/ol")) {
+		    returnString += parseText(xmlr, xmlr.getLocalName()) + "</ol>";
+		} else if (xmlr.getLocalName().equals("li")) {
+		    returnString += "<li>" + parseText(xmlr, xmlr.getLocalName());
+		} else if (xmlr.getLocalName().equals("/li")) {
+		    returnString += parseText(xmlr, xmlr.getLocalName()) + "</li>";
+		} else if (xmlr.getLocalName().equals("strong")) {
+		    returnString += "<b>" + parseText(xmlr, xmlr.getLocalName()) + "</b>";
                 } else if (xmlr.getLocalName().equals("emph") || xmlr.getLocalName().equals("em") || xmlr.getLocalName().equals("i")) {
                     returnString += "<em>" + parseText(xmlr, xmlr.getLocalName()) + "</em>";
                 } else if (xmlr.getLocalName().equals("hi") || xmlr.getLocalName().equals("b")) {
