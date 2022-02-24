@@ -292,14 +292,14 @@ public class JsonParser {
 
     public DatasetVersion parseDatasetVersion(JsonObject obj) throws JsonParseException {
         logger.log(Level.INFO, "1-arg-parseDatasetVersion:obj is called");
-        logger.log(Level.INFO, "obj:1-arg-parseDatasetVersion={0}",xstream.toXML(obj));
+        logger.log(Level.FINE, "obj:1-arg-parseDatasetVersion={0}",xstream.toXML(obj));
         logger.log(Level.INFO, "within 1-arg-parseDatasetVersion, 2-args-version is called");
         return parseDatasetVersion(obj, new DatasetVersion());
     }
 
     public Dataset parseDataset(JsonObject obj) throws JsonParseException {
         logger.log(Level.INFO, "parseDataset is called");
-        logger.log(Level.INFO, "obj: parseDataset={0}",xstream.toXML(obj));
+        logger.log(Level.FINE, "obj: parseDataset={0}",xstream.toXML(obj));
         Dataset dataset = new Dataset();
 
         dataset.setAuthority(obj.getString("authority", null) == null ? settingsService.getValueForKey(SettingsServiceBean.Key.Authority) : obj.getString("authority"));
@@ -319,7 +319,7 @@ public class JsonParser {
 
     public DatasetVersion parseDatasetVersion(JsonObject obj, DatasetVersion dsv) throws JsonParseException {
             logger.log(Level.INFO, "2-args-parseDatasetVersion is called");
-            logger.log(Level.INFO, "obj:2-args-parseDatasetVersion={0}",xstream.toXML(obj));
+            logger.log(Level.FINE, "obj:2-args-parseDatasetVersion={0}",xstream.toXML(obj));
         try {
 
             String archiveNote = obj.getString("archiveNote", null);
@@ -402,7 +402,7 @@ public class JsonParser {
         logger.log(Level.FINE, "json={0}",xstream.toXML(json));
         
         Set<String> keys = json.keySet();
-        logger.log(Level.INFO, "keys={0}", xstream.toXML(keys));
+        logger.log(Level.FINE, "keys={0}", xstream.toXML(keys));
         List<DatasetField> fields = new LinkedList<>();
 
         for (String blockName : keys) {
@@ -499,7 +499,7 @@ public class JsonParser {
     
     public DataFile parseDataFile(JsonObject datafileJson) {
         logger.log(Level.INFO, "parseDataFile is called");
-        logger.log(Level.INFO, "datafileJson={0}",xstream.toXML(datafileJson));
+        logger.log(Level.FINE, "datafileJson={0}",xstream.toXML(datafileJson));
         DataFile dataFile = new DataFile();
         
         Timestamp timestamp = new Timestamp(new Date().getTime());
@@ -599,7 +599,7 @@ public class JsonParser {
             dataTables.get(0).setOriginalFileFormat(originalFileFormat);
             
         }
-        logger.log(Level.INFO, "dataFile: parseDataFile={0}",xstream.toXML(dataFile));
+        logger.log(Level.FINE, "dataFile: parseDataFile={0}",xstream.toXML(dataFile));
         return dataFile;
     }
     
@@ -863,7 +863,7 @@ public class JsonParser {
         logger.log(Level.INFO, "DatasetFieldType:name={0}", type.getName());
         logger.log(Level.INFO, "testType={0}", testType);
         logger.log(Level.INFO, "type.isAllowMultiples()={0}", type.isAllowMultiples());
-        logger.log(Level.INFO, "json={0}", xstream.toXML(json));
+        logger.log(Level.FINE, "json={0}", xstream.toXML(json));
         
         
         if (testType && type.isAllowMultiples() != json.getBoolean("multiple")) {

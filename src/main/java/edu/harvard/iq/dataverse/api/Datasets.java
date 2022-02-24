@@ -648,7 +648,7 @@ public class Datasets extends AbstractApiBean {
             
             
             
-            logger.log(Level.INFO, "target dataset is retrieved={0}", 
+            logger.log(Level.FINE, "target dataset is retrieved={0}", 
                     xstream.toXML(ds));
             
             JsonObject json = Json.createReader(rdr).readObject();
@@ -665,7 +665,7 @@ public class Datasets extends AbstractApiBean {
                 
                 // datafile info was attached
                 ds.setFiles(incomingVersion.getDataset().getFiles());
-                logger.log(Level.INFO, "updated dataset with datafiles={0}", 
+                logger.log(Level.FINE, "updated dataset with datafiles={0}", 
                         xstream.toXML(ds));
             }
             logger.log(Level.INFO, "incomingVersion:updateDraftVersion={0}", 
@@ -983,13 +983,14 @@ public class Datasets extends AbstractApiBean {
     
     
     private Response processDatasetUpdate(String jsonBody, String id, DataverseRequest req, Boolean replaceData){
+        logger.log(Level.INFO, "===== Datasets#processDatasetUpdate: start ====");
         try (StringReader rdr = new StringReader(jsonBody)) {
            
             Dataset ds = findDatasetOrDie(id);
             JsonObject json = Json.createReader(rdr).readObject();
-            logger.log(Level.INFO, "json:processDatasetUpdate={0}", xstream.toXML(json));
+            logger.log(Level.FINE, "json:processDatasetUpdate={0}", xstream.toXML(json));
             DatasetVersion dsv = ds.getEditVersion();
-            logger.log(Level.INFO, "DatasetVersion:processDatasetUpdate={0}", xstream.toXML(dsv));
+            logger.log(Level.FINE, "DatasetVersion:processDatasetUpdate={0}", xstream.toXML(dsv));
             List<DatasetField> fields = new LinkedList<>();
             DatasetField singleField = null; 
             
@@ -1097,15 +1098,15 @@ public class Datasets extends AbstractApiBean {
             } else {
                 managedVersion = execCommand(new CreateDatasetVersionCommand(req, ds, dsv));
             }
-
+            logger.log(Level.INFO, "===== Datasets#processDatasetUpdate: end (ok case) ====");
             return ok(json(managedVersion));
 
         } catch (JsonParseException ex) {
-            logger.log(Level.SEVERE, "Semantic error parsing dataset update Json: " + ex.getMessage(), ex);
+            logger.log(Level.SEVERE, "processDatasetUpdate: Semantic error parsing dataset update Json: " + ex.getMessage(), ex);
             return error(Response.Status.BAD_REQUEST, "Error parsing dataset update: " + ex.getMessage());
 
         } catch (WrappedResponse ex) {
-            logger.log(Level.SEVERE, "Update metdata error: " + ex.getMessage(), ex);
+            logger.log(Level.SEVERE, "processDatasetUpdate: Update metdata error: " + ex.getMessage(), ex);
             return ex.getResponse();
 
         }
