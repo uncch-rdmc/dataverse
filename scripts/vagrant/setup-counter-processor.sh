@@ -2,11 +2,10 @@
 echo "Setting up counter-processor"
 echo "Installing dependencies"
 yum -y install unzip vim-enhanced
-yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-# EPEL provides Python 3.6.6, new enough (3.6.4 in .python-version)
-yum -y install python36 jq
+# CounterProcessor now requires Python 3.7+
+yum -y install python39 jq
 # "ensurepip" tip from https://stackoverflow.com/questions/50408941/recommended-way-to-install-pip3-on-centos7/52518512#52518512
-python3.6 -m ensurepip
+python3.9 -m ensurepip
 # FIXME: actually use this dedicated "counter" user.
 COUNTER_USER=counter
 echo "Ensuring Unix user '$COUNTER_USER' exists"
@@ -30,4 +29,4 @@ done
 #LOG_GLOB="sample_logs/counter_2018-05-*.log"
 #START_DATE="2018-05-08"
 #END_DATE="2018-05-09"
-CONFIG_FILE=/dataverse/scripts/vagrant/counter-processor-config.yaml python3.6 main.py
+CONFIG_FILE=/dataverse/scripts/vagrant/counter-processor-config.yaml python3.9 main.py
