@@ -2810,4 +2810,109 @@ createDataset = UtilIT.createRandomDatasetViaNativeApi(dataverse1Alias, apiToken
         
     }
     
+    
+    
+    
+    
+    @Test 
+    public void testAddFileMetadataToDataset() throws IOException{
+        System.out.println("\n\n===============================================");
+        System.out.println("DatasetsIT: testAddFileMetadataToDataset: start");
+        /*
+        
+        test request curl 
+        -H "X-Dataverse-key: 81b22fd5-3240-4686-89df-3b832127f10a" 
+        -X POST http://localhost:8080/api/datasets/36/addFileMetadata 
+        --upload-file dsv.json
+        // required set
+        // curator level user
+        // api-token 
+        // new dataset
+        */
+        // user as a curator
+        Response createCurator = UtilIT.createRandomUser();
+        createCurator.prettyPrint();
+        createCurator.then().assertThat().statusCode(OK.getStatusCode());
+
+        // api-token
+        String curatorApiToken = UtilIT.getApiTokenFromResponse(createCurator);
+
+        // dataverse as response
+        Response createDataverseResponse = UtilIT.createRandomDataverse(curatorApiToken);
+        createDataverseResponse.prettyPrint();
+
+        
+        // dataverse alias
+        String dataverseAlias = UtilIT.getAliasFromResponse(createDataverseResponse);
+        
+        
+        Response createDatasetResponse = UtilIT.createRandomDatasetViaNativeApi(dataverseAlias, curatorApiToken);
+        createDatasetResponse.prettyPrint();
+        
+        
+        Integer datasetId = UtilIT.getDatasetIdFromResponse(createDatasetResponse);
+        System.out.println("DatasetsIT: testAddFileMetadataToDataset:datasetId="+ datasetId);
+        // payload creating 
+        String pathToJsonFile = "src/test/resources/json/dataset-add-file-metadata.json";
+        System.out.println("DatasetsIT: testAddFileMetadataToDataset:pathToJsonFile="+ pathToJsonFile);
+        String jsonIn = UtilIT.getDatasetJson(pathToJsonFile);
+        System.out.println("DatasetsIT: testAddFileMetadataToDataset:jsonIn="+ jsonIn);
+        Response addFileMetadataRequestResponse = given()
+                .header(API_TOKEN_HTTP_HEADER, curatorApiToken)
+                .body(jsonIn)
+                .contentType("application/json")
+                .post("/api/datasets/" + datasetId + "/addFileMetadata");
+        System.out.println("DatasetsIT: testAddFileMetadataToDataset:before-prettyprint");
+        String body = addFileMetadataRequestResponse.getBody().asString();
+        System.out.println("DatasetsIT: testAddFileMetadataToDataset:res-body="+ body);
+        System.out.println("\n//////////////////////////////////////////////////\n");
+        addFileMetadataRequestResponse.prettyPrint();
+        System.out.println("\n//////////////////////////////////////////////////\n");
+        // a battery of tests
+        /* 
+            status code: 200
+            content type: JSON
+            some key fields: 
+            how many key fields: 
+        */
+        addFileMetadataRequestResponse
+          .then()
+          .assertThat()
+          .statusCode(200)
+          .contentType(ContentType.JSON)
+          .body("status", equalTo(AbstractApiBean.STATUS_OK))
+          .body("data.files[0].label", equalTo("wrld96z8 dta 13.tab"))
+          .body("data.files[0].dataFile.originalFileName", equalTo("wrld96z8 dta 13.dta"))
+          .body("data.files[0].dataFile.dataTables[0].dataTable.varQuantity", equalTo(12))
+          .body("data.files[0].dataFile.dataTables[0].dataTable.dataVariables[0].name", equalTo("ccode"))
+          .body("data.files[0].dataFile.dataTables[0].dataTable.dataVariables[2].summaryStatistics.invd", equalTo("1.0"))
+          .body("data.files[0].dataFile.dataTables[0].dataTable.dataVariables[7].variableCategories[0].label", equalTo("unlimite"))
+          
+          
+          ;
+        System.out.println("DatasetsIT: testAddFileMetadataToDataset: end");
+        System.out.println("\n===============================================\n\n");
+/*
+        
+        String pathToJsonFile = "scripts/search/tests/data/emptyDataset.json";
+        Response createDatasetResponse = UtilIT.createDatasetViaNativeApi(dataverseAlias, pathToJsonFile, apiToken);
+        
+        static Response createDatasetViaNativeApi(String dataverseAlias, String pathToJsonFile, String apiToken) {
+        String jsonIn = getDatasetJson(pathToJsonFile);
+        
+        Response createDatasetResponse = given()               
+                .header(API_TOKEN_HTTP_HEADER, apiToken)
+                .body(jsonIn)
+                .contentType("application/json")
+                .post("/api/dataverses/" + dataverseAlias + "/datasets");
+        return createDatasetResponse;
+    }
+*/
+        
+        
+//        given()
+//          .get("api/datasets/36/addFileMetadata")
+//        .then()
+//            .body("", )
+    }
 }
