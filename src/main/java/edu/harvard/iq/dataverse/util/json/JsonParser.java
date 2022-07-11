@@ -1,9 +1,12 @@
 package edu.harvard.iq.dataverse.util.json;
 
 import com.google.gson.Gson;
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.io.json.JsonHierarchicalStreamDriver;
 import edu.harvard.iq.dataverse.ControlledVocabularyValue;
 import edu.harvard.iq.dataverse.DataFile;
 import edu.harvard.iq.dataverse.DataFileCategory;
+import edu.harvard.iq.dataverse.DataTable;
 import edu.harvard.iq.dataverse.Dataset;
 import edu.harvard.iq.dataverse.DatasetField;
 import edu.harvard.iq.dataverse.DatasetFieldConstant;
@@ -25,6 +28,9 @@ import edu.harvard.iq.dataverse.authorization.groups.impl.ipaddress.ip.IpAddress
 import edu.harvard.iq.dataverse.authorization.groups.impl.ipaddress.ip.IpAddressRange;
 import edu.harvard.iq.dataverse.authorization.groups.impl.maildomain.MailDomainGroup;
 import edu.harvard.iq.dataverse.datasetutility.OptionalFileParams;
+import edu.harvard.iq.dataverse.datavariable.DataVariable;
+import edu.harvard.iq.dataverse.datavariable.SummaryStatistic;
+import edu.harvard.iq.dataverse.datavariable.VariableCategory;
 import edu.harvard.iq.dataverse.harvest.client.HarvestingClient;
 import edu.harvard.iq.dataverse.license.License;
 import edu.harvard.iq.dataverse.license.LicenseServiceBean;
@@ -32,7 +38,6 @@ import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
 import edu.harvard.iq.dataverse.workflow.Workflow;
 import edu.harvard.iq.dataverse.workflow.step.WorkflowStepData;
 import org.apache.commons.validator.routines.DomainValidator;
-
 import java.io.StringReader;
 import java.sql.Timestamp;
 import java.text.ParseException;
@@ -46,15 +51,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.json.Json;
 import javax.json.JsonArray;
+import javax.json.JsonNumber;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * Parses JSON objects into domain objects.
@@ -64,7 +72,7 @@ import javax.json.JsonValue.ValueType;
 public class JsonParser {
 
     private static final Logger logger = Logger.getLogger(JsonParser.class.getCanonicalName());
-
+    static XStream xstream = new XStream(new JsonHierarchicalStreamDriver());
     DatasetFieldServiceBean datasetFieldSvc;
     MetadataBlockServiceBean blockService;
     SettingsServiceBean settingsService;
@@ -302,10 +310,15 @@ public class JsonParser {
     }
 
     public DatasetVersion parseDatasetVersion(JsonObject obj) throws JsonParseException {
+        logger.log(Level.INFO, "1-arg-parseDatasetVersion:obj is called");
+//        logger.log(Level.INFO, "obj:1-arg-parseDatasetVersion={0}",xstream.toXML(obj));
+        logger.log(Level.INFO, "within 1-arg-parseDatasetVersion, 2-args-version is called");
         return parseDatasetVersion(obj, new DatasetVersion());
     }
 
     public Dataset parseDataset(JsonObject obj) throws JsonParseException {
+        logger.log(Level.INFO, "parseDataset is called");
+//        logger.log(Level.INFO, "obj: parseDataset={0}",xstream.toXML(obj));
         Dataset dataset = new Dataset();
 
         dataset.setAuthority(obj.getString("authority", null) == null ? settingsService.getValueForKey(SettingsServiceBean.Key.Authority) : obj.getString("authority"));
@@ -320,6 +333,7 @@ public class JsonParser {
         
         DatasetVersion dsv = new DatasetVersion(); 
         dsv.setDataset(dataset);
+        logger.log(Level.INFO, "calling 2-args-parseDatasetVersion method");
         dsv = parseDatasetVersion(obj.getJsonObject("datasetVersion"), dsv);
         List<DatasetVersion> versions = new ArrayList<>(1);
         versions.add(dsv);
@@ -329,6 +343,8 @@ public class JsonParser {
     }
 
     public DatasetVersion parseDatasetVersion(JsonObject obj, DatasetVersion dsv) throws JsonParseException {
+            logger.log(Level.INFO, "2-args-parseDatasetVersion is called");
+//            logger.log(Level.INFO, "obj:2-args-parseDatasetVersion={0}",xstream.toXML(obj));
         try {
 
             String archiveNote = obj.getString("archiveNote", null);
@@ -392,6 +408,7 @@ public class JsonParser {
                 filesJson = obj.getJsonArray("fileMetadatas");
             }
             if (filesJson != null) {
+                logger.log(Level.INFO, "parseFiles to be called");
                 dsv.setFileMetadatas(parseFiles(filesJson, dsv));
             }
             return dsv;
@@ -418,7 +435,11 @@ public class JsonParser {
     }
 
     public List<DatasetField> parseMetadataBlocks(JsonObject json) throws JsonParseException {
+        logger.log(Level.INFO, "within parseMetadataBlocks");
+        logger.log(Level.FINE, "parseMetadataBlocks:json={0}",xstream.toXML(json));
+        
         Set<String> keys = json.keySet();
+//        logger.log(Level.INFO, "keys={0}", xstream.toXML(keys));
         List<DatasetField> fields = new LinkedList<>();
 
         for (String blockName : keys) {
@@ -444,6 +465,7 @@ public class JsonParser {
     }
     
     private List<DatasetField> parseFieldsFromArray(JsonArray fieldsArray, Boolean testType) throws JsonParseException {
+        logger.log(Level.INFO, "entering parseFieldsFromArray method:testType={0}", testType);
             List<DatasetField> fields = new LinkedList<>();
             for (JsonObject fieldJson : fieldsArray.getValuesAs(JsonObject.class)) {
                 try {
@@ -467,15 +489,18 @@ public class JsonParser {
     }
     
     public List<FileMetadata> parseFiles(JsonArray metadatasJson, DatasetVersion dsv) throws JsonParseException {
+        logger.log(Level.INFO, "parseFiles is called");
         List<FileMetadata> fileMetadatas = new LinkedList<>();
         if (metadatasJson != null) {
             for (JsonObject filemetadataJson : metadatasJson.getValuesAs(JsonObject.class)) {
                 String label = filemetadataJson.getString("label");
+                boolean restricted = filemetadataJson.getBoolean("restricted", false);
                 String directoryLabel = filemetadataJson.getString("directoryLabel", null);
                 String description = filemetadataJson.getString("description", null);
 
                 FileMetadata fileMetadata = new FileMetadata();
                 fileMetadata.setLabel(label);
+                fileMetadata.setRestricted(restricted);
                 fileMetadata.setDirectoryLabel(directoryLabel);
                 fileMetadata.setDescription(description);
                 fileMetadata.setDatasetVersion(dsv);
@@ -483,6 +508,14 @@ public class JsonParser {
                 if ( filemetadataJson.containsKey("dataFile") ) {
                     DataFile dataFile = parseDataFile(filemetadataJson.getJsonObject("dataFile"));
                     dataFile.getFileMetadatas().add(fileMetadata);
+                    if (dsv.getDataset() == null) {
+                        logger.log(Level.INFO, "datasetVersion does not have a dataset; attach a dataset to dsv");
+                        Dataset dataset = new Dataset();
+                        dsv.setDataset(dataset);
+                    }
+                    // the following line may cause NullpointerException 
+                    // if a Dataset is not attached to dsv
+                    // therefore a null test is necessary
                     dataFile.setOwner(dsv.getDataset());
                     fileMetadata.setDataFile(dataFile);
                     if (dsv.getDataset() != null) {
@@ -502,12 +535,18 @@ public class JsonParser {
     }
     
     public DataFile parseDataFile(JsonObject datafileJson) {
+        logger.log(Level.INFO, "parseDataFile is called");
+//        logger.log(Level.INFO, "datafileJson={0}",xstream.toXML(datafileJson));
         DataFile dataFile = new DataFile();
         
         Timestamp timestamp = new Timestamp(new Date().getTime());
         dataFile.setCreateDate(timestamp);
         dataFile.setModificationTime(timestamp);
         dataFile.setPermissionModificationTime(timestamp);
+        
+        // as of version 4.9.4, missing datafile-items that exist in JsonPrinter
+        // persistentId
+        // pidURL
         
         if ( datafileJson.containsKey("filesize") ) {
             dataFile.setFilesize(datafileJson.getJsonNumber("filesize").longValueExact());
@@ -518,6 +557,26 @@ public class JsonParser {
             contentType = "application/octet-stream";
         }
         String storageIdentifier = datafileJson.getString("storageIdentifier", " ");
+
+        // filename: new
+        String filename = datafileJson.getString("filename", null);
+        // filesize(duplicated; see the above)
+//        JsonNumber filesizejsn = datafileJson.getJsonNumber("filesize");
+//        Long filesize = null; 
+//        if (filesizejsn != null){
+//            filesize = datafileJson.getJsonNumber("filesize").longValue();
+//        }
+/*
+        // originalFileFormat: new
+        String originalFileFormat = datafileJson.getString("originalFileFormat", null);
+        // originalFormatLabel: new
+        String originalFormatLabel = datafileJson.getString("originalFormatLabel", null);
+        // UNF: new
+        String UNF = datafileJson.getString("UNF", null);
+        // md5: new
+        String MD5 = datafileJson.getString("md5", null);
+*/
+        
         JsonObject checksum = datafileJson.getJsonObject("checksum");
         if (checksum != null) {
             // newer style that allows for SHA-1 rather than MD5
@@ -556,9 +615,236 @@ public class JsonParser {
         
         dataFile.setContentType(contentType);
         dataFile.setStorageIdentifier(storageIdentifier);
-        
+//        if (filesize != null){
+//            dataFile.setFilesize(filesize);
+//        }
+        // dataFile.setNotaryServiceBound(isNotaryServiceBound);
+        logger.log(Level.INFO, "parsing DataTable from parseDataFile");
+        // parse DataTable
+        JsonArray dataTablesJson = datafileJson.getJsonArray("dataTables");
+        if ((dataTablesJson != null ) && (!dataTablesJson.isEmpty())){
+            logger.log(Level.INFO, "dataTablesJson:size={0}", dataTablesJson.size());
+            // get parsing results of a DataTable
+            List<DataTable> dataTables = parseDataTables(dataTablesJson);
+            logger.log(Level.INFO, "dataTables:size={0}", dataTables.size());
+//            logger.log(Level.FINE, "returned dataTables={0}", xstream.toXML(dataTables));
+            dataFile.setDataTables(dataTables);
+            dataFile.setDataTable(dataTables.get(0));
+            dataTables.get(0).setDataFile(dataFile);
+//            dataTables.get(0).setOriginalFileFormat(originalFileFormat);
+            
+        } else {
+            logger.log(Level.WARNING, "dataTablesJson is null or empty");
+        }
+//        logger.log(Level.INFO, "dataFile: parseDataFile={0}",xstream.toXML(dataFile));
         return dataFile;
     }
+    
+    
+    
+    public List<DataTable> parseDataTables(JsonArray dataTablesJson){
+        logger.log(Level.INFO, "parseDataTables is called");
+        List<DataTable> dataTables = new LinkedList<>();
+        if ((dataTablesJson !=null) && (!dataTablesJson.isEmpty())){
+            logger.log(Level.INFO, "dataTables is not empty");
+            for (JsonObject dataTableJsonL : dataTablesJson.getValuesAs(JsonObject.class)){
+                JsonObject dataTableJson = dataTableJsonL.getJsonObject("dataTable");
+                DataTable dataTable = new DataTable();
+                // capture scalar items
+                // varQuantity
+                long varQuantity =  dataTableJson.getJsonNumber("varQuantity").longValue();
+                dataTable.setVarQuantity(varQuantity);
+                // caseQuantity
+                long caseQuantity = dataTableJson.getJsonNumber("caseQuantity").longValue();
+                dataTable.setCaseQuantity(caseQuantity);
+                
+                // must-be-synced with datatable
+                // originalfileformat: string
+                String originalfileformat = dataTableJson.getString("originalFileFormat");
+                dataTable.setOriginalFileFormat(originalfileformat);
+                // originalfilename: string 
+                String originalfilename = dataTableJson.getString("originalFileName");
+                dataTable.setOriginalFileName(originalfilename);
+                // originalfilesize: Long
+                long originalfilesize = dataTableJson.getJsonNumber("originalFileSize").longValue();
+                dataTable.setOriginalFileSize(originalfilesize);
+                // UNF
+                String UNF = dataTableJson.getString("UNF", null);
+                dataTable.setUnf(UNF);
+                // call the method for pasring dataVariables array
+                List<DataVariable> dataVariables = parseDataVariables(dataTableJson.getJsonArray("dataVariables"), dataTable);
+                logger.log(Level.INFO, "returned dataVariables list: size={0}", dataVariables.size());
+                
+                dataTable.setDataVariables(dataVariables);
+                dataTables.add(dataTable);
+                logger.log(Level.INFO, " dataTables: current size={0}", dataTables.size());
+            }
+        }
+        logger.log(Level.INFO, "dataTables: size(final)={0}", dataTables.size());
+        return dataTables;
+    }
+    
+    
+    // note: the following method has not yet implemented a few of processXXX-
+    // calls in DataTableImportDDI#processVar
+    
+    public List<DataVariable> parseDataVariables(JsonArray dataVariablesJson, DataTable dataTable){
+        logger.log(Level.INFO, "parseDataVariables is called");
+        List<DataVariable> dataVariables = new LinkedList<>();
+        if ((dataVariablesJson != null) && (!dataVariablesJson.isEmpty())) {
+            logger.log(Level.INFO, "dataVariablesJson is not empty:size={0}", dataVariablesJson.size());
+            for (JsonObject dataVariableJson: dataVariablesJson.getValuesAs(JsonObject.class)){
+                DataVariable dataVariable = new DataVariable();
+                // capture scalar itemse.
+                // name
+                dataVariable.setName(dataVariableJson.getString("name", null));
+                // label
+                dataVariable.setLabel(dataVariableJson.getString("label", null));
+                // weighted
+                dataVariable.setWeighted(dataVariableJson.getBoolean("weighted", false));
+                String variableIntervalType= dataVariableJson.getString("variableIntervalType", null);
+                if (variableIntervalType!=null){
+                    String variableIntervalTypeFinal = variableIntervalType.toUpperCase();
+                    if (variableIntervalType.equals("contin")){
+                        variableIntervalTypeFinal="CONTINUOUS";
+                    }
+                    dataVariable.setInterval(DataVariable.VariableInterval.valueOf(variableIntervalTypeFinal));
+                }
+                // variableFormatType
+                String variableFormatType = dataVariableJson.getString("variableFormatType", null);
+                logger.log(Level.INFO, "variableFormatType={0}", variableFormatType);
+                if (variableFormatType!=null){
+                    dataVariable.setType(DataVariable.VariableType.valueOf(variableFormatType));
+                }
+                logger.log(Level.INFO, "type={0}", dataVariable.getType());
+                // orderedFactor
+                dataVariable.setOrderedCategorical(dataVariableJson.getBoolean("orderedFactor", false));
+                // facotr 
+                dataVariable.setFactor(dataVariableJson.getBoolean("factor", false));
+                // fileOrder
+                dataVariable.setFileOrder(dataVariableJson.getInt("fileOrder"));
+                
+                // summaryStatistics
+                dataVariable.setSummaryStatistics(parseSummaryStatistics(dataVariableJson.getJsonObject("summaryStatistics"), dataVariable));
+                // variableCategories
+                dataVariable.setCategories(parseVariableCategories(dataVariableJson.getJsonArray("variableCategories"), dataVariable));
+                
+                // UNF
+                dataVariable.setUnf(dataVariableJson.getString("UNF", null));
+                
+                // DataTable (do not forget this)
+                dataVariable.setDataTable(dataTable);
+                dataVariables.add(dataVariable);
+                logger.log(Level.INFO, "dataVariables: current size={0}", dataVariables.size());
+            }
+        }
+        logger.log(Level.INFO, "dataVariables:final size={0}", dataVariables.size());
+        return dataVariables;
+    }
+    
+    
+    public List<SummaryStatistic> parseSummaryStatistics(JsonObject summaryStatisticsJson, DataVariable dataVariable){
+        logger.log(Level.INFO, "parseSummaryStatistics is called");
+        List<SummaryStatistic> summaryStatistics = new LinkedList<>();
+        if (summaryStatisticsJson !=null){
+            // mean
+            String meanjsn = summaryStatisticsJson.getString("mean", null);
+            if (StringUtils.isNotBlank(meanjsn)){
+                SummaryStatistic mean = new SummaryStatistic();
+                mean.setType(SummaryStatistic.SummaryStatisticType.MEAN);
+                mean.setValue(meanjsn);
+                mean.setDataVariable(dataVariable);
+                summaryStatistics.add(mean);
+            }
+            // medn
+            String mednjsn = summaryStatisticsJson.getString("medn", null);
+            if (StringUtils.isNotBlank(mednjsn)){
+                SummaryStatistic medn = new SummaryStatistic();
+                medn.setType(SummaryStatistic.SummaryStatisticType.MEDN);
+                medn.setValue(mednjsn);
+                medn.setDataVariable(dataVariable);
+                summaryStatistics.add(medn);
+            }
+            // mode
+            String modejsn = summaryStatisticsJson.getString("mode", null);
+            if (StringUtils.isNotBlank(modejsn)){
+                SummaryStatistic mode = new SummaryStatistic();
+                mode.setType(SummaryStatistic.SummaryStatisticType.MODE);
+                mode.setValue(modejsn);
+                mode.setDataVariable(dataVariable);
+                summaryStatistics.add(mode);
+            }
+            // vald
+            String valdjsn = summaryStatisticsJson.getString("vald", null);
+            if (StringUtils.isNotBlank(valdjsn)){
+                SummaryStatistic vald = new SummaryStatistic();
+                vald.setType(SummaryStatistic.SummaryStatisticType.VALD);
+                vald.setValue(valdjsn);
+                vald.setDataVariable(dataVariable);
+                summaryStatistics.add(vald);
+            }
+            // invd
+            String invdjsn = summaryStatisticsJson.getString("invd", null);
+            if (StringUtils.isNotBlank(invdjsn)){
+                SummaryStatistic invd = new SummaryStatistic();
+                invd.setType(SummaryStatistic.SummaryStatisticType.INVD);
+                invd.setValue(invdjsn);
+                invd.setDataVariable(dataVariable);
+                summaryStatistics.add(invd);
+            }
+            // min
+            String minjsn = summaryStatisticsJson.getString("min", null);
+            if (StringUtils.isNotBlank(minjsn)){
+                SummaryStatistic min = new SummaryStatistic();
+                min.setType(SummaryStatistic.SummaryStatisticType.MIN);
+                min.setValue(minjsn);
+                min.setDataVariable(dataVariable);
+                summaryStatistics.add(min);
+            }
+            // max
+            String maxjsn = summaryStatisticsJson.getString("max", null);
+            if (StringUtils.isNotBlank(maxjsn)){
+                SummaryStatistic max = new SummaryStatistic();
+                max.setType(SummaryStatistic.SummaryStatisticType.MAX);
+                max.setValue(maxjsn);
+                max.setDataVariable(dataVariable);
+                summaryStatistics.add(max);
+            }
+            // stdev
+            String stdevjsn = summaryStatisticsJson.getString("stdev", null);
+            if (StringUtils.isNotBlank(stdevjsn)){
+                SummaryStatistic stdev = new SummaryStatistic();
+                stdev.setType(SummaryStatistic.SummaryStatisticType.STDEV);
+                stdev.setValue(stdevjsn);
+                stdev.setDataVariable(dataVariable);
+                summaryStatistics.add(stdev);
+            }
+        }
+        return summaryStatistics;
+    }
+    
+    
+    public List<VariableCategory> parseVariableCategories(JsonArray variableCategoriesJson, DataVariable dataVariable){
+        logger.log(Level.INFO, "parseVariableCategories is called");
+         List<VariableCategory> variableCategories = new LinkedList<>();
+         if ((variableCategoriesJson != null) && (!variableCategoriesJson.isEmpty())){
+             for (JsonObject variableCategoryJson : variableCategoriesJson.getValuesAs(JsonObject.class)){
+                 VariableCategory vc = new VariableCategory();
+                // label
+                String label = variableCategoryJson.getString("label", "");
+                vc.setLabel(label);
+                // value
+                String value = variableCategoryJson.getString("value", "");
+                vc.setValue(value);
+                vc.setDataVariable(dataVariable);
+                variableCategories.add(vc);
+             }
+         }
+        return variableCategories;
+    }
+    
+    
+    
     /**
      * Special processing for GeographicCoverage compound field:
      * Handle parsing exceptions caused by invalid controlled vocabulary in the "country" field by
@@ -613,18 +899,25 @@ public class JsonParser {
     
     
     public DatasetField parseField(JsonObject json, Boolean testType) throws JsonParseException {
+        logger.log(Level.INFO, "parseField: testType={0}", testType);
         if (json == null) {
             return null;
         }
 
         DatasetField ret = new DatasetField();
         DatasetFieldType type = datasetFieldSvc.findByNameOpt(json.getString("typeName", ""));
-    
+
 
         if (type == null) {
             logger.fine("Can't find type '" + json.getString("typeName", "") + "'");
             return null;
         }
+        logger.log(Level.INFO, "DatasetFieldType:name={0}", type.getName());
+        logger.log(Level.INFO, "testType={0}", testType);
+        logger.log(Level.INFO, "type.isAllowMultiples()={0}", type.isAllowMultiples());
+        //logger.log(Level.INFO, "json={0}", xstream.toXML(json));
+        
+        
         if (testType && type.isAllowMultiples() != json.getBoolean("multiple")) {
             throw new JsonParseException("incorrect multiple   for field " + json.getString("typeName", ""));
         }

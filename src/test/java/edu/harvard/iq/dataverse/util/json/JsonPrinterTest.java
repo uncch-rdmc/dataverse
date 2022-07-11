@@ -9,24 +9,33 @@ import edu.harvard.iq.dataverse.mocks.MockDatasetFieldSvc;
 import edu.harvard.iq.dataverse.privateurl.PrivateUrl;
 import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
 import edu.harvard.iq.dataverse.UserNotification.Type;
+import edu.harvard.iq.dataverse.datavariable.DataVariable;
+import edu.harvard.iq.dataverse.datavariable.SummaryStatistic;
+import edu.harvard.iq.dataverse.datavariable.VariableCategory;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
+import javax.json.JsonArray;
 
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonString;
+import javax.json.JsonValue;
 import org.junit.Test;
 import org.junit.Before;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import org.junit.Ignore;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class JsonPrinterTest {
@@ -133,7 +142,7 @@ public class JsonPrinterTest {
         assertEquals("e1d53cf6-794a-457a-9709-7c07629a8267", jsonObject.getJsonObject("roleAssignment").getString("privateUrlToken"));
         assertEquals("#42", jsonObject.getJsonObject("roleAssignment").getString("assignee"));
     }
-
+    @Ignore
     @Test
     public void testGetFileCategories() {
         FileMetadata fmd = new FileMetadata();
@@ -317,6 +326,341 @@ public class JsonPrinterTest {
         assertTrue(typesSet.size() == 2);
         assertTrue(typesSet.contains("REVOKEROLE"));
         assertTrue(typesSet.contains("ASSIGNROLE"));
+    }
+    
+    
+    @Test
+    public void testJsonDT() {
+        // JsonArrayBuilder jsonDT(List<DataTable> ldt)
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing jsonDT: starts here");
+        System.out.println("================================================\n");
+        // setup
+        
+        DataVariable dvar = new DataVariable();
+        dvar.setName("xconst");
+        dvar.setLabel("executive constraints");
+        dvar.setWeighted(false);
+        dvar.setIntervalDiscrete();
+        dvar.setTypeNumeric();
+        dvar.setOrderedCategorical(false);
+        dvar.setFactor(false);
+        dvar.setFileOrder(7);
+        dvar.setUnf("UNF:6:VF7/+3MGLFrPegGD9MyXLQ==");
+        dvar.setSummaryStatistics(new ArrayList<SummaryStatistic>());
+        dvar.setCategories(new ArrayList<VariableCategory>());
+        
+        List<DataVariable> dvl = new ArrayList<>();
+        dvl.add(dvar);
+        
+        
+        
+        List<DataTable> dataTableL = new ArrayList<>();
+        DataTable dataTable = new DataTable();
+        
+        dataTable.setDataVariables(dvl);
+        
+        // set methods follow
+        
+        dataTableL.add(dataTable);
+        
+        System.out.println("jsonDT: size="+ dataTableL.size());
+        JsonArrayBuilder jab = JsonPrinter.jsonDT(dataTableL);
+        JsonArray jsonArray = jab.build();
+        
+        
+        // assert
+        System.out.println("jsonDT: size check");
+        assertEquals(1, jsonArray.size());
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing jsonDT: ends here");
+        System.out.println("================================================\n");
+        
+        
+    }
+    
+    
+    @Test
+    public void testJsonDataTable() {
+        //test JsonObjectBuilder json(DataTable dt) 
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing json(DataTable dt) : starts here");
+        System.out.println("================================================\n");
+        
+        // setup 
+        DataTable dt = new DataTable();
+        dt.setVarQuantity(12L);
+        dt.setCaseQuantity(10L);
+        dt.setUnf("UNF:6:MG63BIvFTMRK6Otb0lnKXA==");
+        dt.setDataVariables(new ArrayList<DataVariable>());
+        JsonObjectBuilder job = JsonPrinter.json(dt);
+        JsonObject jsonObject = job.build();
+         
+        System.out.println("varQuantity case");
+        assertEquals(12L, jsonObject.getJsonNumber("varQuantity").longValue());
+        
+        System.out.println("caseQuantity case");
+        assertEquals(10L, jsonObject.getJsonNumber("caseQuantity").longValue());
+        
+        System.out.println("UNF case");
+        assertEquals("UNF:6:MG63BIvFTMRK6Otb0lnKXA==", jsonObject.getString("UNF"));
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing json(DataTable dt) : ends here");
+        System.out.println("================================================\n");
+        
+    }
+    
+    @Test
+    public void testJsonDV() {
+        // JsonArrayBuilder jsonDV(List<DataVariable> dvl) 
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing jsonDV: starts here");
+        System.out.println("================================================\n");
+        
+        // setup
+        List<DataVariable> dvl = new ArrayList<>();
+
+
+        DataVariable dvar = new DataVariable();
+        dvar.setName("xconst");
+        dvar.setLabel("executive constraints");
+        dvar.setWeighted(false);
+        dvar.setIntervalDiscrete();
+        dvar.setTypeNumeric();
+        dvar.setOrderedCategorical(false);
+        dvar.setFactor(false);
+        dvar.setFileOrder(7);
+        dvar.setUnf("UNF:6:VF7/+3MGLFrPegGD9MyXLQ==");
+        dvar.setSummaryStatistics(new ArrayList<SummaryStatistic>());
+        dvar.setCategories(new ArrayList<VariableCategory>());
+        
+        
+        
+        dvl.add(dvar);
+        System.out.println("size="+ dvl.size());
+        JsonArrayBuilder jab = JsonPrinter.jsonDV(dvl);
+        JsonArray jsonArray = jab.build();
+        
+        // assert
+        System.out.println("size check");
+        assertEquals(1, jsonArray.size());
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing jsonDV: ends here");
+        System.out.println("================================================\n");
+        
+    }
+    
+
+    @Test
+    public void testJsonDataVariable() {
+        // test JsonObjectBuilder json(DataVariable dv)
+        // test ke-value segments of datavariable without summaryStatistics 
+        // and variableCategories
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing json(DataVariable dv): starts here");
+        System.out.println("================================================\n");
+        // setup 
+        DataVariable dvar = new DataVariable();
+        dvar.setName("xconst");
+        dvar.setLabel("executive constraints");
+        dvar.setWeighted(false);
+        dvar.setIntervalDiscrete();
+        dvar.setTypeNumeric();
+        dvar.setOrderedCategorical(false);
+        dvar.setFactor(false);
+        dvar.setFileOrder(7);
+        dvar.setUnf("UNF:6:VF7/+3MGLFrPegGD9MyXLQ==");
+        dvar.setSummaryStatistics(new ArrayList<SummaryStatistic>());
+        dvar.setCategories(new ArrayList<VariableCategory>());
+
+        JsonObjectBuilder job = JsonPrinter.json(dvar);
+        JsonObject jsonObject = job.build();
+        
+        // assert
+        System.out.println("name case");
+        assertEquals("xconst", jsonObject.getString("name"));
+        
+        System.out.println("label case");
+        assertEquals("executive constraints", jsonObject.getString("label"));
+        
+        System.out.println("weighted case");
+        assertFalse("xconst", jsonObject.getBoolean("weighted"));
+        
+        System.out.println("variableIntervalType case");
+        assertEquals(DataVariable.VariableInterval.DISCRETE.toString(), jsonObject.getString("variableIntervalType").toUpperCase());
+        
+        System.out.println("variableFormatType case");
+        assertEquals(DataVariable.VariableType.NUMERIC.toString(), jsonObject.getString("variableFormatType"));
+        
+        System.out.println("orderedFactor case");
+        assertFalse(jsonObject.getBoolean("orderedFactor"));
+        
+        System.out.println("factor case");
+        assertFalse(jsonObject.getBoolean("factor"));
+        
+        System.out.println("fileOrder case");
+        assertEquals(7, jsonObject.getInt("fileOrder"));
+        
+        System.out.println("UNF case");
+        assertEquals("UNF:6:VF7/+3MGLFrPegGD9MyXLQ==", jsonObject.getString("UNF"));
+        
+        
+        
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing json(DataVariable dv): ends here");
+        System.out.println("================================================\n");
+        
+        
+        
+        
+    }
+    
+    @Test
+    public void testJsonSumStat(){
+        // JsonObjectBuilder jsonSumStat(Collection<SummaryStatistic> sumStat)
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing jsonSumStat: starts here");
+        System.out.println("================================================\n");
+        // method to be tested
+        // JsonObjectBuilder sumStatObj = Json.createObjectBuilder();
+        // sumStatObj.add(stat.getTypeLabel(), stat.getValue());
+        // setup
+        Collection<SummaryStatistic> sumStatL = new ArrayList<>();
+        
+        SummaryStatistic sumstat0 = new SummaryStatistic();
+        sumstat0.setType(SummaryStatistic.SummaryStatisticType.MEAN);
+        sumstat0.setValue("2.4");
+        sumStatL.add(sumstat0);
+        
+        SummaryStatistic sumstat1 = new SummaryStatistic();
+        sumstat1.setType(SummaryStatistic.SummaryStatisticType.MODE);
+        sumstat1.setValue(".");
+        sumStatL.add(sumstat1);
+        
+        SummaryStatistic sumstat2 = new SummaryStatistic();
+        sumstat2.setType(SummaryStatistic.SummaryStatisticType.MAX);
+        sumstat2.setValue("3");
+        sumStatL.add(sumstat2);
+        
+        SummaryStatistic sumstat3 = new SummaryStatistic();
+        sumstat3.setType(SummaryStatistic.SummaryStatisticType.VALD);
+        sumstat3.setValue("9");
+        sumStatL.add(sumstat3);
+        
+        SummaryStatistic sumstat4 = new SummaryStatistic();
+        sumstat4.setType(SummaryStatistic.SummaryStatisticType.MEDN);
+        sumstat4.setValue("3");
+        sumStatL.add(sumstat4);
+        
+        SummaryStatistic sumstat5 = new SummaryStatistic();
+        sumstat5.setType(SummaryStatistic.SummaryStatisticType.INVD);
+        sumstat5.setValue("1");
+        sumStatL.add(sumstat5);
+        
+        SummaryStatistic sumstat6 = new SummaryStatistic();
+        sumstat6.setType(SummaryStatistic.SummaryStatisticType.MIN);
+        sumstat6.setValue("1");
+        sumStatL.add(sumstat6);
+        
+        SummaryStatistic sumstat7 = new SummaryStatistic();
+        sumstat7.setType(SummaryStatistic.SummaryStatisticType.STDEV);
+        sumstat7.setValue("0.726");
+        sumStatL.add(sumstat7);
+        
+        JsonObjectBuilder job = JsonPrinter.jsonSumStat(sumStatL);
+        JsonObject jsonObject = job.build();
+        
+        // assert
+        for (SummaryStatistic sumstat : sumStatL){
+            if (sumstat.isTypeMean()){
+                System.out.println("mean case");
+                assertEquals("2.4", jsonObject.getString("mean"));
+            } else if (sumstat.isTypeMode()){
+                System.out.println("mode case");
+                assertEquals(".", jsonObject.getString("mode"));
+            } else if (sumstat.isTypeMax()){
+                System.out.println("max case");
+                assertEquals("3", jsonObject.getString("max"));
+            } else if (sumstat.isTypeValid()){
+                System.out.println("vald case");
+                assertEquals("9", jsonObject.getString("vald"));
+            } else if (sumstat.isTypeMedian()){
+                System.out.println("medn case");
+                assertEquals("3", jsonObject.getString("medn"));
+            } else if (sumstat.isTypeInvalid()){
+                System.out.println("invd case");
+                assertEquals("1", jsonObject.getString("invd"));
+            } else if (sumstat.isTypeMin()){
+                System.out.println("min case");
+                assertEquals("1", jsonObject.getString("min"));
+            } else if (sumstat.isTypeStdDev()){
+                System.out.println("stdev case");
+                assertEquals("0.726", jsonObject.getString("stdev"));
+            }
+        }
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing jsonSumStat: ends here");
+        System.out.println("================================================\n");
+        
+        
+    }
+    
+    @Test
+    public void testJsonCatStat() {
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing jsonCatStat : starts here");
+        System.out.println("================================================\n");
+        // Method to be tested
+        // JsonArrayBuilder jsonCatStat(Collection<VariableCategory> catStat)
+        // setup
+        Collection<VariableCategory> catStatObj = new ArrayList<>();
+        VariableCategory vc1 = new VariableCategory();
+        VariableCategory vc2 = new VariableCategory();
+        VariableCategory vc3 = new VariableCategory();
+        vc1.setValue("1");
+        vc1.setLabel("< 40%");
+        vc2.setValue("2");
+        vc2.setLabel("40-60");
+        vc3.setValue("3");
+        vc3.setLabel(">60%");
+        catStatObj.add(vc1);
+        catStatObj.add(vc2);
+        catStatObj.add(vc3);
+        
+        JsonArrayBuilder jab = JsonPrinter.jsonCatStat(catStatObj);
+        JsonArray jsonArray = jab.build();
+        
+        // assert
+        
+        System.out.println("1st value="+ jsonArray.get(0).asJsonObject().getString("value"));
+        assertEquals("1", jsonArray.get(0).asJsonObject().getString("value"));
+        System.out.println("1st label="+ jsonArray.get(0).asJsonObject().getString("label"));
+        assertEquals("< 40%", jsonArray.get(0).asJsonObject().getString("label"));
+        
+        System.out.println("2nd value="+ jsonArray.get(1).asJsonObject().getString("value"));
+        assertEquals("2", jsonArray.get(1).asJsonObject().getString("value"));
+        System.out.println("2nd label="+ jsonArray.get(1).asJsonObject().getString("label"));
+        assertEquals("40-60", jsonArray.get(1).asJsonObject().getString("label"));
+        
+        System.out.println("3rd value="+ jsonArray.get(2).asJsonObject().getString("value"));
+        assertEquals("3", jsonArray.get(2).asJsonObject().getString("value"));
+        System.out.println("3rd label="+ jsonArray.get(2).asJsonObject().getString("label"));
+        assertEquals(">60%", jsonArray.get(2).asJsonObject().getString("label"));
+        
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonPrinter: testing jsonCatStat : ends here");
+        System.out.println("================================================\n");
+        
     }
 
 }

@@ -5,6 +5,8 @@
 package edu.harvard.iq.dataverse.util.json;
 
 import edu.harvard.iq.dataverse.ControlledVocabularyValue;
+import edu.harvard.iq.dataverse.DataFile;
+import edu.harvard.iq.dataverse.DataTable;
 import edu.harvard.iq.dataverse.Dataset;
 import edu.harvard.iq.dataverse.DatasetField;
 import edu.harvard.iq.dataverse.DatasetFieldCompoundValue;
@@ -23,10 +25,15 @@ import edu.harvard.iq.dataverse.authorization.groups.impl.ipaddress.ip.IpAddress
 import edu.harvard.iq.dataverse.authorization.groups.impl.maildomain.MailDomainGroup;
 import edu.harvard.iq.dataverse.authorization.groups.impl.maildomain.MailDomainGroupTest;
 import edu.harvard.iq.dataverse.authorization.users.GuestUser;
+import edu.harvard.iq.dataverse.datavariable.DataVariable;
+import edu.harvard.iq.dataverse.datavariable.SummaryStatistic;
+import edu.harvard.iq.dataverse.datavariable.VariableCategory;
 import edu.harvard.iq.dataverse.engine.command.DataverseRequest;
 import edu.harvard.iq.dataverse.license.LicenseServiceBean;
 import edu.harvard.iq.dataverse.mocks.MockDatasetFieldSvc;
 import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
+import java.io.File;
+import java.io.FileInputStream;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -57,10 +64,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
+import org.junit.Assert;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
+import org.junit.Ignore;
 
 /**
  *
@@ -77,6 +87,8 @@ public class JsonParserTest {
     DatasetFieldType pubIdType;
     DatasetFieldType compoundSingleType;
     JsonParser sut;
+    JsonObject joDataFile;
+    JsonArray datatbl;
     
     public JsonParserTest() {
     }
@@ -90,7 +102,7 @@ public class JsonParserTest {
     }
     
     @Before
-    public void setUp() {
+    public void setUp() throws IOException, JsonParseException {
         datasetFieldTypeSvc = new MockDatasetFieldSvc();
         datasetFieldTypeSvc.setMetadataBlock("citation");
 
@@ -124,6 +136,19 @@ public class JsonParserTest {
         compoundSingleType.setChildDatasetFieldTypes(childTypes);
         settingsSvc = new MockSettingsSvc();
         sut = new JsonParser(datasetFieldTypeSvc, null, settingsSvc, licenseService);
+        
+        
+        // shared variable-level metadata in JSON
+        
+        JsonObject payload;
+        String pathToJsonFile = "src/test/resources/json/dataset-add-file-metadata.json";
+        try (JsonReader jsonReader = Json.createReader( new FileInputStream(new File(pathToJsonFile)));) {
+            payload = jsonReader.readObject();
+        }
+        JsonObject files0 =  payload.getJsonArray("files").get(0).asJsonObject();
+        joDataFile = files0.getJsonObject("dataFile");
+        datatbl = joDataFile.getJsonArray("dataTables");
+        
     }
     
     @Test 
@@ -716,4 +741,148 @@ public class JsonParserTest {
         assertTrue("Set contains REVOKEROLE", typesSet.contains(Type.REVOKEROLE));
         assertTrue("Set contains ASSIGNROLE", typesSet.contains(Type.ASSIGNROLE));
     }
+    
+    
+    /*
+    This test class relies on Junit 4, not Junit 5; 
+    the assertXXX methods of Junit 4 slightly differ from those of Junit 5 
+    such as assertNotNull in terms of the order of arguments
+    */
+
+    @Test
+    public void testParseDataFile() throws IOException, JsonParseException {
+        System.out.println("\n================================================");
+        System.out.println("JsonParserTest: testParseDataFile: starts here");
+        System.out.println("================================================\n");
+        
+        
+        
+        
+        /*
+        some key-values are not stored in DataFile itself
+        */
+        DataFile actual = sut.parseDataFile(joDataFile);
+        
+        
+        assertEquals("text/tab-separated-values", actual.getContentType());
+        assertEquals(Long.parseLong("590"), actual.getFilesize());
+        assertEquals(false, actual.isRestricted());
+        System.out.println("\n================================================");
+        System.out.println("JsonParserTest: testParseDataFile: ends here");
+        System.out.println("================================================\n");
+    }
+    
+    
+    @Test 
+    public void testParseDataTables() throws IOException, JsonParseException {
+        System.out.println("\n================================================");
+        System.out.println("JsonParserTest: testParseDataTables: starts here");
+        System.out.println("================================================\n");
+        
+        
+        
+        
+        
+        
+        assertTrue("DataTables has one dataTable", datatbl.size() == 1);
+        
+        DataTable actual = sut.parseDataTables(datatbl).get(0);
+        assertNotNull("DataTable is not null", actual);
+        assertEquals(Long.parseLong("12"), actual.getVarQuantity().longValue());
+        assertEquals(Long.parseLong("10"), actual.getCaseQuantity().longValue());
+        assertEquals("application/x-stata", actual.getOriginalFileFormat());
+        assertEquals("wrld96z8 dta 13.dta", actual.getOriginalFileName());
+        assertEquals(Long.parseLong("3129"), actual.getOriginalFileSize().longValue());
+        assertEquals("UNF:6:MG63BIvFTMRK6Otb0lnKXA==", actual.getUnf());
+        
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonParserTest: testParseDataTables: ends here");
+        System.out.println("================================================\n");
+    }
+    
+    
+    @Test 
+    public void testParseDataVariables() throws IOException, JsonParseException {
+        System.out.println("\n================================================");
+        System.out.println("JsonParserTest: testParseDataVariables: starts here");
+        System.out.println("================================================\n");
+        
+        
+        
+        
+        
+        List<DataVariable> actual = sut.parseDataTables(datatbl).get(0).getDataVariables();
+        
+        
+        assertEquals("country", actual.get(1).getName());
+        assertEquals("country long name", actual.get(1).getLabel());
+        assertEquals(DataVariable.VariableType.CHARACTER, actual.get(1).getType());
+        assertEquals(false, actual.get(1).isOrderedCategorical());
+        assertEquals(false, actual.get(1).isFactor());
+        assertEquals(1, actual.get(1).getFileOrder());
+        assertEquals("UNF:6:FXNrKsbddRDGB725BP4BfQ==", actual.get(1).getUnf());
+        
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonParserTest: testParseDataVariables: ends here");
+        System.out.println("================================================\n");
+    }
+    
+    @Test 
+    public void testParseSummaryStatistics() throws IOException, JsonParseException {
+        System.out.println("\n================================================");
+        System.out.println("JsonParserTest: testParseSummaryStatistics: starts here");
+        System.out.println("================================================\n");
+        
+        
+        
+        
+        List<SummaryStatistic> actual = (List<SummaryStatistic>) sut.parseDataTables(datatbl).get(0).getDataVariables().get(2).getSummaryStatistics();
+        
+        for (SummaryStatistic stat : actual){
+            if (stat.isTypeInvalid()){
+                System.out.println("invalid value");
+                assertEquals("1.0", stat.getValue());
+            } else if (stat.isTypeValid()){
+                System.out.println("valid value");
+                 assertEquals("9.0", stat.getValue());
+            } else if (stat.isTypeMean()) {
+                System.out.println("mean value");
+                assertEquals("409.30708482530383", stat.getValue());
+            }
+        }
+        
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonParserTest: testParseSummaryStatistics: ends here");
+        System.out.println("================================================\n");
+    }
+    
+
+    @Test
+    public void testParseVariableCategories() throws IOException, JsonParseException {
+        System.out.println("\n================================================");
+        System.out.println("JsonParserTest: testParseVariableCategories: starts here");
+        System.out.println("================================================\n");
+        
+        
+        
+        
+        
+        List<VariableCategory> actual = (List<VariableCategory>) sut.parseDataTables(datatbl).get(0).getDataVariables().get(7).getCategories();
+        
+        assertTrue("how many variableCategories",7 == actual.size() );
+        assertEquals("unlimite", actual.get(0).getLabel());
+        assertEquals("1", actual.get(0).getValue());
+        assertEquals("intermed", actual.get(6).getLabel());
+        assertEquals("6", actual.get(6).getValue());
+        
+        
+        System.out.println("\n================================================");
+        System.out.println("JsonParserTest: testParseVariableCategories: ends here");
+        System.out.println("================================================\n");
+    }
+
+    
 }

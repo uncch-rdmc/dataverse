@@ -19,7 +19,6 @@
         "filesize": 590,
         "description": "",
         "restricted": false,
-        "notaryServiceBound": true,
         "storageIdentifier": "180957c84f3-5cecf60d80d6",
         "originalFileFormat": "application/x-stata",
         "originalFormatLabel": "application/x-stata",
@@ -35,6 +34,9 @@
             "dataTable": {
               "varQuantity": 12,
               "caseQuantity": 10,
+              "originalFileFormat": "application/x-stata",
+              "originalFileName":"wrld96z8 dta 13.dta",
+              "originalFileSize": 3129,
               "UNF": "UNF:6:MG63BIvFTMRK6Otb0lnKXA==",
               "dataVariables": [
                 {
@@ -44,6 +46,7 @@
                   "variableIntervalType": "discrete",
                   "variableFormatType": "CHARACTER",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 0,
                   "UNF": "UNF:6:4QFp4Zj0buidpN6UoHca9Q=="
                 },
@@ -54,6 +57,7 @@
                   "variableIntervalType": "discrete",
                   "variableFormatType": "CHARACTER",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 1,
                   "UNF": "UNF:6:FXNrKsbddRDGB725BP4BfQ=="
                 },
@@ -64,6 +68,7 @@
                   "variableIntervalType": "contin",
                   "variableFormatType": "NUMERIC",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 2,
                   "UNF": "UNF:6:7E2uwEwKLej3A3UkTPbxqg==",
                   "summaryStatistics": {
@@ -84,6 +89,7 @@
                   "variableIntervalType": "contin",
                   "variableFormatType": "NUMERIC",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 3,
                   "UNF": "UNF:6:TuY2N/4TecWqfRnov7KKSw==",
                   "summaryStatistics": {
@@ -104,6 +110,7 @@
                   "variableIntervalType": "discrete",
                   "variableFormatType": "NUMERIC",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 4,
                   "UNF": "UNF:6:IMONE5YTBoGxZanolV6c/Q==",
                   "summaryStatistics": {
@@ -124,6 +131,7 @@
                   "variableIntervalType": "discrete",
                   "variableFormatType": "NUMERIC",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 5,
                   "UNF": "UNF:6:ygyy7i6eTmZfHJ3HwBfLag==",
                   "summaryStatistics": {
@@ -144,6 +152,7 @@
                   "variableIntervalType": "discrete",
                   "variableFormatType": "NUMERIC",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 6,
                   "UNF": "UNF:6:tsVKXwllgLNiZnVoIPQ00Q==",
                   "summaryStatistics": {
@@ -164,6 +173,7 @@
                   "variableIntervalType": "discrete",
                   "variableFormatType": "NUMERIC",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 7,
                   "UNF": "UNF:6:VF7/+3MGLFrPegGD9MyXLQ==",
                   "summaryStatistics": {
@@ -214,6 +224,7 @@
                   "variableIntervalType": "discrete",
                   "variableFormatType": "NUMERIC",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 8,
                   "UNF": "UNF:6:xSoxtTqahPbAnjsf0xyuZA==",
                   "summaryStatistics": {
@@ -260,6 +271,7 @@
                   "variableIntervalType": "discrete",
                   "variableFormatType": "NUMERIC",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 9,
                   "UNF": "UNF:6:Q5rBxCu++e/gnQ5k/9L8jw==",
                   "summaryStatistics": {
@@ -310,6 +322,7 @@
                   "variableIntervalType": "discrete",
                   "variableFormatType": "NUMERIC",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 10,
                   "UNF": "UNF:6:RJ684tkqEvysZNZOcSBhQQ==",
                   "summaryStatistics": {
@@ -340,6 +353,7 @@
                   "variableIntervalType": "discrete",
                   "variableFormatType": "NUMERIC",
                   "orderedFactor": false,
+                  "factor": false,
                   "fileOrder": 11,
                   "UNF": "UNF:6:10A1sJH7QmMyPfS8DpSwuQ==",
                   "summaryStatistics": {

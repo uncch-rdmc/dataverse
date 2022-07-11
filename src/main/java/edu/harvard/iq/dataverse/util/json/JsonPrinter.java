@@ -1,6 +1,29 @@
 package edu.harvard.iq.dataverse.util.json;
 
-import edu.harvard.iq.dataverse.*;
+import edu.harvard.iq.dataverse.AuxiliaryFile;
+import edu.harvard.iq.dataverse.ControlledVocabularyValue;
+import edu.harvard.iq.dataverse.DataFile;
+import edu.harvard.iq.dataverse.DataFileTag;
+import edu.harvard.iq.dataverse.DataTable;
+import edu.harvard.iq.dataverse.Dataset;
+import edu.harvard.iq.dataverse.DatasetDistributor;
+import edu.harvard.iq.dataverse.DatasetFieldType;
+import edu.harvard.iq.dataverse.DatasetField;
+import edu.harvard.iq.dataverse.DatasetFieldCompoundValue;
+import edu.harvard.iq.dataverse.DatasetFieldServiceBean;
+import edu.harvard.iq.dataverse.DatasetFieldValue;
+import edu.harvard.iq.dataverse.DatasetLock;
+import edu.harvard.iq.dataverse.DatasetVersion;
+import edu.harvard.iq.dataverse.Dataverse;
+import edu.harvard.iq.dataverse.DataverseContact;
+import edu.harvard.iq.dataverse.DataverseFacet;
+import edu.harvard.iq.dataverse.DataverseTheme;
+import edu.harvard.iq.dataverse.Embargo;
+import edu.harvard.iq.dataverse.FileMetadata;
+import edu.harvard.iq.dataverse.GlobalId;
+import edu.harvard.iq.dataverse.MetadataBlock;
+import edu.harvard.iq.dataverse.RoleAssignment;
+import edu.harvard.iq.dataverse.TermsOfUseAndAccess;
 import edu.harvard.iq.dataverse.authorization.DataverseRole;
 import edu.harvard.iq.dataverse.authorization.groups.impl.maildomain.MailDomainGroup;
 import edu.harvard.iq.dataverse.authorization.providers.builtin.BuiltinUser;
@@ -15,6 +38,9 @@ import edu.harvard.iq.dataverse.authorization.groups.impl.shib.ShibGroup;
 import edu.harvard.iq.dataverse.authorization.providers.AuthenticationProviderRow;
 import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
 import edu.harvard.iq.dataverse.authorization.users.User;
+import edu.harvard.iq.dataverse.datavariable.DataVariable;
+import edu.harvard.iq.dataverse.datavariable.SummaryStatistic;
+import edu.harvard.iq.dataverse.datavariable.VariableCategory;
 import edu.harvard.iq.dataverse.branding.BrandingUtil;
 import edu.harvard.iq.dataverse.dataaccess.DataAccess;
 import edu.harvard.iq.dataverse.dataset.DatasetUtil;
@@ -602,7 +628,7 @@ public class JsonPrinter {
                 .add("description", df.getDescription())
                 .add("embargo", embargo)
                 //.add("released", df.isReleased())
-                //.add("restricted", df.isRestricted())
+                .add("restricted", df.isRestricted())
                 .add("storageIdentifier", df.getStorageIdentifier())
                 .add("originalFileFormat", df.getOriginalFileFormat())
                 .add("originalFormatLabel", df.getOriginalFormatLabel())
@@ -622,9 +648,89 @@ public class JsonPrinter {
                 .add("md5", getMd5IfItExists(df.getChecksumType(), df.getChecksumValue()))
                 .add("checksum", getChecksumTypeAndValue(df.getChecksumType(), df.getChecksumValue()))
                 .add("tabularTags", getTabularFileTags(df))
+                .add("dataTables", org.apache.commons.collections.CollectionUtils.isNotEmpty(df.getDataTables()) ? JsonPrinter.jsonDT(df.getDataTables()) : null)
                 .add("creationDate",  df.getCreateDateFormattedYYYYMMDD())
                 ;
     }
+    
+    
+    public static JsonArrayBuilder jsonDT(List<DataTable> ldt) {
+        JsonArrayBuilder ldtArr = Json.createArrayBuilder();
+        for(DataTable dt: ldt){
+            ldtArr.add(jsonObjectBuilder().add("dataTable", JsonPrinter.json(dt)));
+        }
+        return ldtArr;
+    }
+    
+    public static JsonObjectBuilder json(DataTable dt) {
+        // the following keys must be added 
+        // 
+        // originalfileformat
+        // originalfilename
+        // originalfilesize
+        
+
+        return jsonObjectBuilder()
+                .add("varQuantity", dt.getVarQuantity())
+                .add("caseQuantity", dt.getCaseQuantity())
+                .add("originalFileFormat", dt.getOriginalFileFormat())
+                .add("originalFileName",dt.getOriginalFileName())
+                .add("originalFileSize", dt.getOriginalFileSize())
+                .add("UNF", dt.getUnf())
+                .add("dataVariables", JsonPrinter.jsonDV(dt.getDataVariables()))
+                ;
+    }
+    
+    public static JsonArrayBuilder jsonDV(List<DataVariable> dvl) {
+        JsonArrayBuilder varArr = Json.createArrayBuilder();
+        for (DataVariable dv: dvl){
+            varArr.add(JsonPrinter.json(dv));
+        }
+        return varArr;
+    }
+    
+    
+    public static JsonObjectBuilder json(DataVariable dv) {
+    return jsonObjectBuilder()
+            .add("name", dv.getName())
+            .add("label", dv.getLabel())
+            .add("weighted", dv.isWeighted())
+            .add("variableIntervalType", dv.getIntervalLabel())
+            .add("variableFormatType", dv.getType().name()) // varFormat
+            .add("formatCategory", dv.getFormatCategory())
+            .add("orderedFactor", dv.isOrderedCategorical()) 
+            .add("factor", dv.isFactor())
+            .add("fileOrder", dv.getFileOrder()) 
+            .add("UNF",dv.getUnf())
+            .add("summaryStatistics", org.apache.commons.collections.CollectionUtils.isNotEmpty(dv.getSummaryStatistics()) ? JsonPrinter.jsonSumStat(dv.getSummaryStatistics()) : null)
+            .add("variableCategories", org.apache.commons.collections.CollectionUtils.isNotEmpty(dv.getCategories()) ? JsonPrinter.jsonCatStat(dv.getCategories()) : null) 
+            ;
+    }
+    
+    
+    public static JsonObjectBuilder jsonSumStat(Collection<SummaryStatistic> sumStat){
+        JsonObjectBuilder sumStatObj = Json.createObjectBuilder();
+        for (SummaryStatistic stat: sumStat){
+            sumStatObj.add(stat.getTypeLabel(), stat.getValue());
+        }
+        return sumStatObj;
+    }
+    
+    
+    public static JsonArrayBuilder jsonCatStat(Collection<VariableCategory> catStat){
+        JsonArrayBuilder catArr = Json.createArrayBuilder();
+
+        for (VariableCategory stat: catStat){
+            JsonObjectBuilder catStatObj = Json.createObjectBuilder();
+            catStatObj.add("label", stat.getLabel())
+                      .add("value", stat.getValue())
+                      //.add("frequency", stat.getFrequency()) // frequency is not calculated
+                    ;
+            catArr.add(catStatObj);
+        }
+        return catArr;
+    }
+    
     
     public static String format(Date d) {
         return (d == null) ? null : Util.getDateTimeFormat().format(d);
