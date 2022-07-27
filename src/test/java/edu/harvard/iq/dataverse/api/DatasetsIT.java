@@ -57,6 +57,8 @@ import java.util.HashMap;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObjectBuilder;
+import javax.ws.rs.core.Response.Status;
+
 import static javax.ws.rs.core.Response.Status.NO_CONTENT;
 import static javax.ws.rs.core.Response.Status.OK;
 import javax.xml.stream.XMLInputFactory;
@@ -2810,109 +2812,184 @@ createDataset = UtilIT.createRandomDatasetViaNativeApi(dataverse1Alias, apiToken
         
     }
     
-    
-    
-    
-    
-    @Test 
-    public void testAddFileMetadataToDataset() throws IOException{
-        System.out.println("\n\n===============================================");
-        System.out.println("DatasetsIT: testAddFileMetadataToDataset: start");
-        /*
-        
-        test request curl 
-        -H "X-Dataverse-key: 81b22fd5-3240-4686-89df-3b832127f10a" 
-        -X POST http://localhost:8080/api/datasets/36/addFileMetadata 
-        --upload-file dsv.json
-        // required set
-        // curator level user
-        // api-token 
-        // new dataset
-        */
-        // user as a curator
-        Response createCurator = UtilIT.createRandomUser();
-        createCurator.prettyPrint();
-        createCurator.then().assertThat().statusCode(OK.getStatusCode());
+    /**
+     * In this test we do CRUD of archivalStatus (Note this and other archiving
+     * related tests are part of
+     * https://github.com/harvard-lts/hdc-integration-tests)
+     *
+     * This test requires the root dataverse to be published to pass.
+     */
+    @Test
+    public void testArchivalStatusAPI() throws IOException {
 
-        // api-token
-        String curatorApiToken = UtilIT.getApiTokenFromResponse(createCurator);
+        Response createUser = UtilIT.createRandomUser();
+        createUser.prettyPrint();
+        assertEquals(200, createUser.getStatusCode());
+        String username = UtilIT.getUsernameFromResponse(createUser);
+        String apiToken = UtilIT.getApiTokenFromResponse(createUser);
+        Response makeSuperUser = UtilIT.makeSuperUser(username);
+        assertEquals(200, makeSuperUser.getStatusCode());
 
-        // dataverse as response
-        Response createDataverseResponse = UtilIT.createRandomDataverse(curatorApiToken);
+        Response createNoAccessUser = UtilIT.createRandomUser();
+        createNoAccessUser.prettyPrint();
+        String apiTokenNoAccess = UtilIT.getApiTokenFromResponse(createNoAccessUser);
+
+        Response createDataverseResponse = UtilIT.createRandomDataverse(apiToken);
         createDataverseResponse.prettyPrint();
+        String dataverseAlias = UtilIT.getAliasFromResponse(createDataverseResponse);
+
+        Response createDatasetResponse = UtilIT.createRandomDatasetViaNativeApi(dataverseAlias, apiToken);
+        createDatasetResponse.prettyPrint();
+        Integer datasetId = JsonPath.from(createDatasetResponse.body().asString()).getInt("data.id");
+
+        Response getDatasetJsonBeforePublishing = UtilIT.nativeGet(datasetId, apiToken);
+        getDatasetJsonBeforePublishing.prettyPrint();
+        String protocol = JsonPath.from(getDatasetJsonBeforePublishing.getBody().asString()).getString("data.protocol");
+        String authority = JsonPath.from(getDatasetJsonBeforePublishing.getBody().asString())
+                .getString("data.authority");
+        String identifier = JsonPath.from(getDatasetJsonBeforePublishing.getBody().asString())
+                .getString("data.identifier");
+        String datasetPersistentId = protocol + ":" + authority + "/" + identifier;
+
+        Response publishDataverse = UtilIT.publishDataverseViaSword(dataverseAlias, apiToken);
+        assertEquals(200, publishDataverse.getStatusCode());
+
+        logger.info("Attempting to publish a major version");
+        // Return random sleep 9/13/2019
+        // Without it we've seen some DB deadlocks
+        // 3 second sleep, to allow the indexing to finish:
+
+        try {
+            Thread.sleep(3000l);
+        } catch (InterruptedException iex) {
+        }
+
+        Response publishDataset = UtilIT.publishDatasetViaNativeApi(datasetPersistentId, "major", apiToken);
+        assertEquals(200, publishDataset.getStatusCode());
+
+        String pathToJsonFileSingle = "doc/sphinx-guides/source/_static/api/dataset-simple-update-metadata.json";
+        Response addSubjectSingleViaNative = UtilIT.updateFieldLevelDatasetMetadataViaNative(datasetPersistentId, pathToJsonFileSingle, apiToken);
+        addSubjectSingleViaNative.prettyPrint();
+        addSubjectSingleViaNative.then().assertThat()
+                .statusCode(OK.getStatusCode());
 
         
-        // dataverse alias
-        String dataverseAlias = UtilIT.getAliasFromResponse(createDataverseResponse);
-        
-        
-        Response createDatasetResponse = UtilIT.createRandomDatasetViaNativeApi(dataverseAlias, curatorApiToken);
-        createDatasetResponse.prettyPrint();
-        
-        
-        Integer datasetId = UtilIT.getDatasetIdFromResponse(createDatasetResponse);
-        System.out.println("DatasetsIT: testAddFileMetadataToDataset:datasetId="+ datasetId);
-        // payload creating 
-        String pathToJsonFile = "src/test/resources/json/dataset-add-file-metadata.json";
-        System.out.println("DatasetsIT: testAddFileMetadataToDataset:pathToJsonFile="+ pathToJsonFile);
-        String jsonIn = UtilIT.getDatasetJson(pathToJsonFile);
-        System.out.println("DatasetsIT: testAddFileMetadataToDataset:jsonIn="+ jsonIn);
-        Response addFileMetadataRequestResponse = given()
-                .header(API_TOKEN_HTTP_HEADER, curatorApiToken)
-                .body(jsonIn)
-                .contentType("application/json")
-                .post("/api/datasets/" + datasetId + "/addFileMetadata");
-        System.out.println("DatasetsIT: testAddFileMetadataToDataset:before-prettyprint");
-        String body = addFileMetadataRequestResponse.getBody().asString();
-        System.out.println("DatasetsIT: testAddFileMetadataToDataset:res-body="+ body);
-        System.out.println("\n//////////////////////////////////////////////////\n");
-        addFileMetadataRequestResponse.prettyPrint();
-        System.out.println("\n//////////////////////////////////////////////////\n");
-        // a battery of tests
-        /* 
-            status code: 200
-            content type: JSON
-            some key fields: 
-            how many key fields: 
-        */
-        addFileMetadataRequestResponse
-          .then()
-          .assertThat()
-          .statusCode(200)
-          .contentType(ContentType.JSON)
-          .body("status", equalTo(AbstractApiBean.STATUS_OK))
-          .body("data.files[0].label", equalTo("wrld96z8 dta 13.tab"))
-          .body("data.files[0].dataFile.originalFileName", equalTo("wrld96z8 dta 13.dta"))
-          .body("data.files[0].dataFile.dataTables[0].dataTable.varQuantity", equalTo(12))
-          .body("data.files[0].dataFile.dataTables[0].dataTable.dataVariables[0].name", equalTo("ccode"))
-          .body("data.files[0].dataFile.dataTables[0].dataTable.dataVariables[2].summaryStatistics.invd", equalTo("1.0"))
-          .body("data.files[0].dataFile.dataTables[0].dataTable.dataVariables[7].variableCategories[0].label", equalTo("unlimite"))
-          
-          
-          ;
-        System.out.println("DatasetsIT: testAddFileMetadataToDataset: end");
-        System.out.println("\n===============================================\n\n");
-/*
-        
-        String pathToJsonFile = "scripts/search/tests/data/emptyDataset.json";
-        Response createDatasetResponse = UtilIT.createDatasetViaNativeApi(dataverseAlias, pathToJsonFile, apiToken);
-        
-        static Response createDatasetViaNativeApi(String dataverseAlias, String pathToJsonFile, String apiToken) {
-        String jsonIn = getDatasetJson(pathToJsonFile);
-        
-        Response createDatasetResponse = given()               
-                .header(API_TOKEN_HTTP_HEADER, apiToken)
-                .body(jsonIn)
-                .contentType("application/json")
-                .post("/api/dataverses/" + dataverseAlias + "/datasets");
-        return createDatasetResponse;
+        // Now change the title
+//        Response response = UtilIT.updateDatasetJsonLDMetadata(datasetId, apiToken,
+//                "{\"title\": \"New Title\", \"@context\":{\"title\": \"http://purl.org/dc/terms/title\"}}", true);
+//        response.then().assertThat().statusCode(OK.getStatusCode());
+
+        int status = Status.CONFLICT.getStatusCode();
+        while (status == Status.CONFLICT.getStatusCode()) {
+
+            Response publishV2 = UtilIT.publishDatasetViaNativeApi(datasetPersistentId, "major", apiToken);
+            status = publishV2.thenReturn().statusCode();
+        }
+        assertEquals(OK.getStatusCode(), status);
+
+        if (!UtilIT.sleepForReindex(datasetPersistentId, apiToken, 3000)) {
+            logger.info("Still indexing after 3 seconds");
+        }
+
+        //Verify the status is empty
+        Response nullStatus = UtilIT.getDatasetVersionArchivalStatus(datasetId, "1.0", apiToken);
+        nullStatus.then().assertThat().statusCode(NO_CONTENT.getStatusCode());
+
+        //Set it
+        Response setStatus = UtilIT.setDatasetVersionArchivalStatus(datasetId, "1.0", apiToken, "pending",
+                "almost there");
+        setStatus.then().assertThat().statusCode(OK.getStatusCode());
+
+        //Get it
+        Response getStatus = UtilIT.getDatasetVersionArchivalStatus(datasetId, "1.0", apiToken);
+        getStatus.then().assertThat().body("data.status", equalTo("pending")).body("data.message",
+                equalTo("almost there"));
+
+        //Delete it
+        Response deleteStatus = UtilIT.deleteDatasetVersionArchivalStatus(datasetId, "1.0", apiToken);
+        deleteStatus.then().assertThat().statusCode(OK.getStatusCode());
+
+        //Make sure it's gone
+        Response nullStatus2 = UtilIT.getDatasetVersionArchivalStatus(datasetId, "1.0", apiToken);
+        nullStatus2.then().assertThat().statusCode(NO_CONTENT.getStatusCode());
+
     }
-*/
-        
-        
-//        given()
-//          .get("api/datasets/36/addFileMetadata")
-//        .then()
-//            .body("", )
+
+
+
+    @Test
+    public void testAddFileMetadataToDataset() throws IOException {
+            System.out.println("\n\n===============================================");
+            System.out.println("DatasetsIT: testAddFileMetadataToDataset: start");
+            /*
+             * 
+             * test request curl -H "X-Dataverse-key: 81b22fd5-3240-4686-89df-3b832127f10a" -X POST
+             * http://localhost:8080/api/datasets/36/addFileMetadata --upload-file dsv.json //
+             * required set // curator level user // api-token // new dataset
+             */
+            // user as a curator
+            Response createCurator = UtilIT.createRandomUser();
+            createCurator.prettyPrint();
+            createCurator.then().assertThat().statusCode(OK.getStatusCode());
+
+            // api-token
+            String curatorApiToken = UtilIT.getApiTokenFromResponse(createCurator);
+
+            // dataverse as response
+            Response createDataverseResponse = UtilIT.createRandomDataverse(curatorApiToken);
+            createDataverseResponse.prettyPrint();
+
+
+            // dataverse alias
+            String dataverseAlias = UtilIT.getAliasFromResponse(createDataverseResponse);
+
+
+            Response createDatasetResponse =
+                            UtilIT.createRandomDatasetViaNativeApi(dataverseAlias, curatorApiToken);
+            createDatasetResponse.prettyPrint();
+
+
+            Integer datasetId = UtilIT.getDatasetIdFromResponse(createDatasetResponse);
+            System.out.println("DatasetsIT: testAddFileMetadataToDataset:datasetId=" + datasetId);
+            // payload creating
+            String pathToJsonFile = "src/test/resources/json/dataset-add-file-metadata.json";
+            System.out.println("DatasetsIT: testAddFileMetadataToDataset:pathToJsonFile="
+                            + pathToJsonFile);
+            String jsonIn = UtilIT.getDatasetJson(pathToJsonFile);
+            System.out.println("DatasetsIT: testAddFileMetadataToDataset:jsonIn=" + jsonIn);
+            Response addFileMetadataRequestResponse = given()
+                            .header(API_TOKEN_HTTP_HEADER, curatorApiToken).body(jsonIn)
+                            .contentType("application/json")
+                            .post("/api/datasets/" + datasetId + "/addFileMetadata");
+            System.out.println("DatasetsIT: testAddFileMetadataToDataset:before-prettyprint");
+            String body = addFileMetadataRequestResponse.getBody().asString();
+            System.out.println("DatasetsIT: testAddFileMetadataToDataset:res-body=" + body);
+            System.out.println("\n//////////////////////////////////////////////////\n");
+            addFileMetadataRequestResponse.prettyPrint();
+            System.out.println("\n//////////////////////////////////////////////////\n");
+            // a battery of tests
+            /*
+             * status code: 200 content type: JSON some key fields: how many key fields:
+             */
+            addFileMetadataRequestResponse.then().assertThat().statusCode(200)
+                            .contentType(ContentType.JSON)
+                            .body("status", equalTo(AbstractApiBean.STATUS_OK))
+                            .body("data.files[0].label", equalTo("wrld96z8 dta 13.tab"))
+                            .body("data.files[0].dataFile.originalFileName",
+                                            equalTo("wrld96z8 dta 13.dta"))
+                            .body("data.files[0].dataFile.dataTables[0].dataTable.varQuantity",
+                                            equalTo(12))
+                            .body("data.files[0].dataFile.dataTables[0].dataTable.dataVariables[0].name",
+                                            equalTo("ccode"))
+                            .body("data.files[0].dataFile.dataTables[0].dataTable.dataVariables[2].summaryStatistics.invd",
+                                            equalTo("1.0"))
+                            .body("data.files[0].dataFile.dataTables[0].dataTable.dataVariables[7].variableCategories[0].label",
+                                            equalTo("unlimite"))
+
+
+            ;
+            System.out.println("DatasetsIT: testAddFileMetadataToDataset: end");
+            System.out.println("\n===============================================\n\n");
     }
+
 }
