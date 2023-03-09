@@ -22,6 +22,7 @@ if [ ! -d maven ]; then
     mv apache-maven-3.8.5/* maven/
 fi
 
+# echo "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" > maven/maven.sh 
 # echo "export JAVA_HOME=/usr/lib/jvm/jre-openjdk" > maven/maven.sh
 echo "export JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64" > maven/maven.sh 
 echo "export M2_HOME=../maven" >> maven/maven.sh
