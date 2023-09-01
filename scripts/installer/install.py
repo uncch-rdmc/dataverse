@@ -426,7 +426,10 @@ if podName != "start-glassfish" and podName != "dataverse-glassfish-0" and not s
    try:
       cur.execute(conn_cmd)
    except:
-      sys.exit("Couldn't grant privileges on schema public to "+pgUser)
+      if force:
+         print("WARNING: failed to create the database - continuing, since the --force option was specified")
+      else:
+         sys.exit("Couldn't grant privileges on schema public to "+pgUser)
    cur.close()
    conn.close()
 
