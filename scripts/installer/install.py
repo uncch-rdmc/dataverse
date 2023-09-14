@@ -429,10 +429,12 @@ if podName != "start-glassfish" and podName != "dataverse-glassfish-0" and not s
       try:
          print("PostgreSQL 15 or higher detected. Running " + conn_cmd)
          cur.execute(conn_cmd)
-      except:
+      except Exception as e:
          if force:
             print("WARNING: failed to grant permissions on schema public - continuing, since the --force option was specified")
+            print(e)
          else:
+            print(e)
             sys.exit("Couldn't grant privileges on schema public to "+pgUser)
       cur.close()
       conn.close()
