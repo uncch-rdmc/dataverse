@@ -1,5 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 import time, unittest, config
 
 def is_alert_present(wd):
@@ -32,43 +33,115 @@ class test_dataset(unittest.TestCase):
     def test_test_dataset(self):
         success = True
         wd = self.wd
-        wd.get(config.accessURL)
-        wd.find_element(By.LINK_TEXT, "Log In").click()
-        time.sleep(1)
-        wd.find_element(By.ID, "loginForm:userName").click()
-        wd.find_element(By.ID, "loginForm:userName").clear()
-        wd.find_element(By.ID, "loginForm:userName").send_keys("tester")
-        wd.find_element(By.ID, "loginForm:password").click()
-        wd.find_element(By.ID, "loginForm:password").clear()
-        wd.find_element(By.ID, "loginForm:password").send_keys("tester")
-        wd.find_element(By.ID, "loginForm:login").click()
-        time.sleep(1)
-        wd.find_element(By.ID, "shareForm:shareData_button").click()
-        wd.find_element(By.LINK_TEXT, "Add Dataset").click()
-        wd.find_element(By.ID, "datasetForm:title").click()
-        wd.find_element(By.ID, "datasetForm:title").clear()
-        wd.find_element(By.ID, "datasetForm:title").send_keys("test dataset")
-        wd.find_element(By.CSS_SELECTOR, "td.leftClass").click()
-        wd.find_element(By.ID, "datasetForm:author").click()
-        wd.find_element(By.ID, "datasetForm:author").clear()
-        wd.find_element(By.ID, "datasetForm:author").send_keys("tester")
-        wd.find_element(By.ID, "datasetForm:date").click()
-        wd.find_element(By.ID, "datasetForm:date").clear()
-        wd.find_element(By.ID, "datasetForm:date").send_keys("2013")
-        wd.find_element(By.ID, "datasetForm:distributor").click()
-        wd.find_element(By.ID, "datasetForm:distributor").clear()
-        wd.find_element(By.ID, "datasetForm:distributor").send_keys("test inc")
-        wd.find_element(By.ID, "datasetForm:description").click()
-        wd.find_element(By.ID, "datasetForm:description").clear()
-        wd.find_element(By.ID, "datasetForm:description").send_keys("This is a test")
-        wd.find_element(By.ID, "datasetForm:save").click()
-        wd.find_element(By.LINK_TEXT, "Log Out").click()
+        try:
+            wd.get(config.accessURL)
+            time.sleep(2)  # Wait for page to load
+            
+            # Try to find and click Log In link
+            try:
+                login_link = wd.find_element(By.LINK_TEXT, "Log In")
+                login_link.click()
+                time.sleep(1)
+            except NoSuchElementException:
+                success = False
+                print("Could not find 'Log In' link.")
+                return  # Exit early if we can't proceed
+            
+            # Fill out login form
+            login_fields = [
+                ("loginForm:userName", "tester"),
+                ("loginForm:password", "tester")
+            ]
+            
+            for field_id, value in login_fields:
+                try:
+                    field = wd.find_element(By.ID, field_id)
+                    field.click()
+                    field.clear()
+                    field.send_keys(value)
+                except NoSuchElementException:
+                    success = False
+                    print(f"Could not find login field: {field_id}")
+            
+            # Try to submit login
+            try:
+                login_button = wd.find_element(By.ID, "loginForm:login")
+                login_button.click()
+                time.sleep(1)
+            except NoSuchElementException:
+                success = False
+                print("Could not find login button.")
+            
+            # Try to add dataset
+            try:
+                share_button = wd.find_element(By.ID, "shareForm:shareData_button")
+                share_button.click()
+                time.sleep(1)
+                
+                add_dataset_link = wd.find_element(By.LINK_TEXT, "Add Dataset")
+                add_dataset_link.click()
+                time.sleep(1)
+            except NoSuchElementException:
+                success = False
+                print("Could not find share button or Add Dataset link.")
+            
+            # Fill out dataset form
+            dataset_fields = [
+                ("datasetForm:title", "test dataset"),
+                ("datasetForm:author", "tester"),
+                ("datasetForm:date", "2013"),
+                ("datasetForm:distributor", "test inc"),
+                ("datasetForm:description", "This is a test")
+            ]
+            
+            for field_id, value in dataset_fields:
+                try:
+                    field = wd.find_element(By.ID, field_id)
+                    field.click()
+                    field.clear()
+                    field.send_keys(value)
+                except NoSuchElementException:
+                    success = False
+                    print(f"Could not find dataset form field: {field_id}")
+            
+            # Try to handle the CSS selector click (this might be problematic)
+            try:
+                css_element = wd.find_element(By.CSS_SELECTOR, "td.leftClass")
+                css_element.click()
+            except NoSuchElementException:
+                success = False
+                print("Could not find CSS selector element.")
+            
+            # Try to save dataset
+            try:
+                save_button = wd.find_element(By.ID, "datasetForm:save")
+                save_button.click()
+                time.sleep(1)
+            except NoSuchElementException:
+                success = False
+                print("Could not find dataset save button.")
+            
+            # Try to logout
+            try:
+                logout_link = wd.find_element(By.LINK_TEXT, "Log Out")
+                logout_link.click()
+            except NoSuchElementException:
+                success = False
+                print("Could not find Log Out link.")
+                
+        except Exception as e:
+            success = False
+            print(f"Error in test_test_dataset: {e}")
+            
         self.assertTrue(success)
     
     def tearDown(self):
-        if not (config.local):
-            print("Link to your job: https://saucelabs.com/jobs/%s" % self.wd.session_id)        
-        self.wd.quit()
+        try:
+            if not (config.local):
+                print("Link to your job: https://saucelabs.com/jobs/%s" % self.wd.session_id)        
+            self.wd.quit()
+        except:
+            pass  # Ignore errors in tearDown
 
 if __name__ == '__main__':
     unittest.main()

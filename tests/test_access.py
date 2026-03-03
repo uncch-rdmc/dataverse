@@ -1,5 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 import time, unittest, config
 
 def is_alert_present(wd):
@@ -32,18 +33,35 @@ class test_access(unittest.TestCase):
     
     def test_test_access(self):
         success = True
-        msg = "Success"
         wd = self.wd
-        wd.get(config.accessURL)
-        if not ("Log In" in wd.find_element(By.TAG_NAME, "html").text):
+        try:
+            wd.get(config.accessURL)
+            time.sleep(2)  # Wait for page to load
+            
+            # Check if the page loaded successfully
+            try:
+                html_element = wd.find_element(By.TAG_NAME, "html")
+                page_text = html_element.text
+                if not ("Log In" in page_text):
+                    success = False
+                    print("Could not verify page text.") 
+            except NoSuchElementException:
+                success = False
+                print("Could not find HTML element to check page text.")
+                
+        except Exception as e:
             success = False
-            print("Could not verify page text.") 
+            print(f"Error in test_test_access: {e}")
+            
         self.assertTrue(success)
     
     def tearDown(self):
-        if not (config.local):
-            print("Link to your job: https://saucelabs.com/jobs/%s" % self.wd.session_id)
-        self.wd.quit()
+        try:
+            if not (config.local):
+                print("Link to your job: https://saucelabs.com/jobs/%s" % self.wd.session_id)
+            self.wd.quit()
+        except:
+            pass  # Ignore errors in tearDown
 
 if __name__ == '__main__':
     unittest.main()
