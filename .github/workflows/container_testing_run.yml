@@ -99,7 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          pip install -r tests/requirement.txt
+          pip install -r tests/requirements.txt
 
       # Chrome is preinstalled on ubuntu-latest
       - name: Verify Chrome

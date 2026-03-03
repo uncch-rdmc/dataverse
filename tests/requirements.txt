@@ -3,7 +3,6 @@
 
 # Core testing framework
 selenium>=4.0.0                    # Browser automation for integration tests
-unittest                           # Python built-in testing framework (documented)
 
 # Additional testing tools
 pytest>=7.0.0                      # Modern testing framework
