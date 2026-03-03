@@ -1,0 +1,145 @@
+name: container-testing-run
+
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - 'doc/**'
+      - '**/*.md'
+      - '**/*.txt'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*.md'
+  pull_request:
+    branches:
+      - develop
+    paths-ignore:
+      - 'doc/**'
+      - '**/*.md'
+      - '**/*.txt'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*.md'
+
+concurrency:
+  group: container-testing-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  container-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # ---------------------------
+      # CHECKOUT
+      # ---------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---------------------------
+      # SCRUB RUNNER (Atomic)
+      # ---------------------------
+      - name: Scrub existing Docker installations
+        run: |
+          set -euo pipefail
+          sudo systemctl stop docker || true
+          sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
+          sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || true
+          sudo rm -rf /var/lib/docker
+          sudo rm -rf /var/lib/containerd
+
+      - name: Update apt repositories
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+
+      # ---------------------------
+      # INSTALL DOCKER (Ubuntu-native)
+      # ---------------------------
+      - name: Install Docker dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y \
+            ca-certificates \
+            curl \
+            gnupg \
+            lsb-release
+
+      - name: Add Docker GPG key
+        run: |
+          set -euo pipefail
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+            sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+      - name: Add Docker repository
+        run: |
+          set -euo pipefail
+          echo \
+            "deb [arch=$(dpkg --print-architecture) \
+            signed-by=/etc/apt/keyrings/docker.gpg] \
+            https://download.docker.com/linux/ubuntu \
+            $(lsb_release -cs) stable" | \
+            sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update -y
+
+      - name: Install Docker Engine
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y \
+            docker-ce \
+            docker-ce-cli \
+            containerd.io \
+            docker-buildx-plugin \
+            docker-compose-plugin
+
+      - name: Start Docker
+        run: |
+          set -euo pipefail
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo docker version
+
+      # ---------------------------
+      # BUILD + RUN REPO CONTAINERS
+      # ---------------------------
+      - name: Build containers
+        run: |
+          set -euo pipefail
+          sudo docker compose -f docker-compose-dev.yml build
+
+      - name: Launch containers
+        run: |
+          set -euo pipefail
+          sudo docker compose -f docker-compose-dev.yml up -d
+
+      - name: Verify containers are running
+        run: |
+          set -euo pipefail
+          sudo docker ps
+          RUNNING=$(sudo docker ps -q | wc -l)
+          if [ "$RUNNING" -eq 0 ]; then
+            echo "No containers are running."
+            exit 1
+          fi
+          echo "Containers running: $RUNNING"
+
+      # ---------------------------
+      # SHUTDOWN (Always Executes)
+      # ---------------------------
+      - name: Shutdown containers
+        if: always()
+        run: |
+          set -euo pipefail
+          sudo docker compose -f docker-compose-dev.yml down
+
+      - name: Final cleanup
+        if: always()
+        run: |
+          set -euo pipefail
+          sudo docker system prune -af || true
