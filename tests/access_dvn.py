@@ -1,18 +1,22 @@
 # This is a test to access Dataverse homepage. 
 import unittest
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 
 class AccessDVN(unittest.TestCase):
 
     def setUp(self):
-        desired_capabilities = webdriver.DesiredCapabilities.FIREFOX
-        desired_capabilities['version'] = '24'
-        desired_capabilities['platform'] = 'Linux'
-        desired_capabilities['name'] = 'Testing Selenium 2 in Python at Sauce'
+        from selenium.webdriver.chrome.options import Options
+        
+        options = Options()
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--window-size=1920,1080")
 
         self.driver = webdriver.Remote(
-            desired_capabilities=desired_capabilities,
+            options=options,
             command_executor="http://esodvn:325caef9-81dd-47a5-8b74-433057ce888f@ondemand.saucelabs.com:80/wd/hub"
         )
         self.driver.implicitly_wait(30)

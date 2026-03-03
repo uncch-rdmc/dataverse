@@ -1,32 +1,29 @@
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 import time, unittest, config
 
 def is_alert_present(wd):
     try:
-        wd.switch_to_alert().text
+        wd.switch_to.alert.text
         return True
     except:
         return False
 
 class test_access(unittest.TestCase):
     def setUp(self):
+        from selenium.webdriver.chrome.options import Options
+
+        options = Options()
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--window-size=1920,1080")
+
         if (config.local):
-            from selenium.webdriver.chrome.options import Options
-
-            options = Options()
-            options.add_argument("--headless=new")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--window-size=1920,1080")
-
             self.wd = webdriver.Chrome(options=options)
         else:
-            desired_capabilities = webdriver.DesiredCapabilities.FIREFOX
-            desired_capabilities['version'] = '24'
-            desired_capabilities['platform'] = 'Linux'
-            desired_capabilities['name'] = 'test_access'
             self.wd = webdriver.Remote(
-                desired_capabilities=desired_capabilities,
+                options=options,
                 command_executor="http://esodvn:325caef9-81dd-47a5-8b74-433057ce888f@ondemand.saucelabs.com:80/wd/hub"
             )
  
@@ -38,7 +35,7 @@ class test_access(unittest.TestCase):
         msg = "Success"
         wd = self.wd
         wd.get(config.accessURL)
-        if not ("Log In" in wd.find_element_by_tag_name("html").text):
+        if not ("Log In" in wd.find_element(By.TAG_NAME, "html").text):
             success = False
             print("Could not verify page text.") 
         self.assertTrue(success)
