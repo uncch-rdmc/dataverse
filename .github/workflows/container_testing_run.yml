@@ -1,0 +1,142 @@
+name: container-testing-run
+
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - 'doc/**'
+      - '**/*.md'
+      - '**/*.txt'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*.md'
+  pull_request:
+    branches:
+      - develop
+    paths-ignore:
+      - 'doc/**'
+      - '**/*.md'
+      - '**/*.txt'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*.md'
+
+concurrency:
+  group: container-testing-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  container-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # ---------------------------
+      # CHECKOUT
+      # ---------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---------------------------
+      # SCRUB RUNNER
+      # ---------------------------
+      - name: Scrub Docker state
+        run: |
+          set -euo pipefail
+          sudo systemctl stop docker || true
+          sudo rm -rf /var/lib/docker
+          sudo rm -rf /var/lib/containerd
+
+      # Ubuntu runner already has Docker installed.
+      - name: Verify Docker
+        run: |
+          set -euo pipefail
+          docker version
+
+      # ---------------------------
+      # BUILD + START CONTAINERS
+      # ---------------------------
+      - name: Build containers
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose-dev.yml build
+
+      - name: Start containers
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose-dev.yml up -d
+
+      # ---------------------------
+      # WAIT FOR DATAVERSE (STRICT API CHECK)
+      # ---------------------------
+      - name: Wait for Dataverse API readiness
+        run: |
+          set -euo pipefail
+
+          URL="http://localhost:8080/api/info/version"
+          MAX_ATTEMPTS=6
+          SLEEP_TIME=10
+
+          echo "Checking Dataverse API readiness at $URL"
+
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $attempt..."
+
+            RESPONSE=$(curl -s --max-time 10 "$URL" || true)
+
+            if echo "$RESPONSE" | grep -q '"status":"OK"'; then
+              echo "Dataverse API is ready."
+              echo "Response: $RESPONSE"
+              exit 0
+            fi
+
+            echo "Not ready yet. Sleeping ${SLEEP_TIME}s..."
+            sleep $SLEEP_TIME
+
+            # Exponential backoff (10 → 20 → 40 → 60 → 60 → 60)
+            if [ $SLEEP_TIME -lt 60 ]; then
+              SLEEP_TIME=$((SLEEP_TIME * 2))
+              if [ $SLEEP_TIME -gt 60 ]; then
+                SLEEP_TIME=60
+              fi
+            fi
+          done
+
+          echo "Dataverse failed to report status OK within timeout."
+          docker compose -f docker-compose-dev.yml logs
+          exit 1
+
+      # ---------------------------
+      # SETUP PYTHON + SELENIUM
+      # ---------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install test dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r tests/requirements.txt
+
+      # Chrome is preinstalled on ubuntu-latest
+      - name: Verify Chrome
+        run: |
+          google-chrome --version
+
+      # ---------------------------
+      # SHUTDOWN
+      # ---------------------------
+      - name: Shutdown containers
+        if: always()
+        run: |
+          docker compose -f docker-compose-dev.yml down -v
+
+      - name: Final Docker cleanup
+        if: always()
+        run: |
+          docker system prune -af || true
