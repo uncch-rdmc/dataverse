@@ -1,0 +1,26 @@
+# Testing dependencies for Dataverse integration tests
+# Install with: pip install -r requirements.txt
+
+# Core testing framework
+selenium>=4.0.0                    # Browser automation for integration tests
+unittest                           # Python built-in testing framework (documented)
+
+# Additional testing tools
+pytest>=7.0.0                      # Modern testing framework
+pytest-selenium>=3.0.0             # pytest plugin for Selenium integration
+pytest-html>=3.1.0                 # HTML test reports
+pytest-xdist>=3.0.0                # Parallel test execution
+
+# HTTP and API testing
+requests>=2.25.0                   # HTTP library for API testing
+
+# HTML/XML processing
+beautifulsoup4>=4.9.0              # HTML/XML parsing
+lxml>=4.6.0                        # XML processing library
+
+# Environment and configuration
+python-dotenv>=0.19.0              # Environment variable management
+
+# Development and debugging
+pytest-cov>=4.0.0                  # Coverage reporting
+pytest-mock>=3.10.0                # Mocking for tests
