@@ -11,7 +11,15 @@ def is_alert_present(wd):
 class test_dataverse(unittest.TestCase):
     def setUp(self):
         if (config.local):
-            self.wd = webdriver.Firefox()
+            from selenium.webdriver.chrome.options import Options
+
+            options = Options()
+            options.add_argument("--headless=new")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--window-size=1920,1080")
+
+            self.wd = webdriver.Chrome(options=options)
         else:
             desired_capabilities = webdriver.DesiredCapabilities.FIREFOX
             desired_capabilities['version'] = '24'
