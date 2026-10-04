@@ -265,13 +265,22 @@ jobs:
           artifact-name: docker-logs-jsf-${{ matrix.browser }}
 
   # =====================================================================
-  # INTEGRATION TESTS
+  # INTEGRATION TESTS: classes split into balanced groups, one fresh stack per group
   # =====================================================================
   integration-tests:
-    name: Integration Tests
+    name: Integration Tests (${{ matrix.group }}/3)
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep TOTAL_GROUPS below in sync with the number of entries here.
+        group: [1, 2, 3]
+
+    env:
+      TOTAL_GROUPS: 3
 
     defaults:
       run:
@@ -279,8 +288,6 @@ jobs:
 
     permissions:
       contents: read
-      checks: write
-      pull-requests: write
 
     steps:
 
@@ -297,16 +304,18 @@ jobs:
         uses: ./.github/actions/start-dataverse-stack
 
       # ---------------------------
-      # RUN MAVEN INTEGRATION TESTS
+      # RUN MAVEN INTEGRATION TESTS (THIS GROUP ONLY)
       # ---------------------------
-      - name: Run Maven Integration Tests
+      # Splits tests/integration-tests.txt by the times in tests/integration-test-timings.csv.
+      - name: Run Maven Integration Tests (group ${{ matrix.group }})
         env:
           DVAPIKEY: "burrito"
           DV_APIKEY: "burrito"
           DV_API_KEY: "burrito"
+          GROUP: ${{ matrix.group }}
         run: |
           set -euo pipefail
-          TEST_SUITE=$(cat tests/integration-tests.txt)
+          TEST_SUITE=$(python3 .github/workflows/scripts/split-integration-tests.py "$GROUP" "$TOTAL_GROUPS")
 
           echo "Running suite: $TEST_SUITE"
 
@@ -324,25 +333,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: maven-test-reports
+          name: maven-test-reports-${{ matrix.group }}
           path: |
             target/surefire-reports/
             target/failsafe-reports/
           retention-days: 14
 
       # ---------------------------
-      # PUBLISH TEST DASHBOARD IN GITHUB PR
-      # ---------------------------
-      - name: Publish Test Results Dashboard
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
-        with:
-          files: |
-            target/failsafe-reports/TEST-*.xml
-            target/surefire-reports/TEST-*.xml
-
-      # ---------------------------
-      # FAIL WORKFLOW IF TESTS FAILED
+      # FAIL THIS GROUP IF ITS TESTS FAILED
       # ---------------------------
       - name: Check for Test Failures
         if: always()
@@ -361,4 +359,4 @@ jobs:
         if: always()
         uses: ./.github/actions/collect-docker-logs
         with:
-          artifact-name: docker-logs-integration
+          artifact-name: docker-logs-integration-${{ matrix.group }}
