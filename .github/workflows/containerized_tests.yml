@@ -360,3 +360,56 @@ jobs:
         uses: ./.github/actions/collect-docker-logs
         with:
           artifact-name: docker-logs-integration-${{ matrix.group }}
+
+  # =====================================================================
+  # INTEGRATION TEST RESULTS: one combined dashboard for all groups
+  # =====================================================================
+  integration-results:
+    name: Integration Test Results
+    needs: integration-tests
+    # Run when groups failed too, but not when they never ran (e.g. the build failed).
+    if: ${{ !cancelled() && needs.integration-tests.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        shell: bash
+
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+
+      # ---------------------------
+      # DOWNLOAD REPORTS OF ALL GROUPS
+      # ---------------------------
+      - name: Download test reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: maven-test-reports-*
+          path: test-reports
+
+      # ---------------------------
+      # PUBLISH TEST DASHBOARD IN GITHUB PR
+      # ---------------------------
+      - name: Publish Test Results Dashboard
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: |
+            test-reports/**/TEST-*.xml
+
+      # ---------------------------
+      # FAIL WORKFLOW IF TESTS FAILED
+      # ---------------------------
+      - name: Check for Test Failures
+        run: |
+          echo "Checking Surefire/Failsafe reports of all groups for failures..."
+          ls test-reports
+          if grep -rq "<failure" --include="*.xml" test-reports; then
+            echo "Tests failed! Failing the workflow."
+            exit 1
+          fi
+          echo "All tests passed."
