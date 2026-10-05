@@ -152,12 +152,13 @@ jobs:
           retention-days: 7
 
   # =====================================================================
-  # EXPERIMENT: ALL TESTS AT ONCE AGAINST ONE DATAVERSE INSTANCE
+  # EXPERIMENT: FULL SUITES AT THE SAME TIME AGAINST ONE DATAVERSE INSTANCE
   # =====================================================================
-  # One runner, one stack. The integration tests run in 3 parallel surefire forks while
-  # Chromium, Firefox and WebKit each run the JSF suite at the same time.
-  all-tests:
-    name: All tests on one instance
+  # Checks for state pollution between the suites. One runner, one stack: the full
+  # integration suite (one surefire process) and the full JSF suite (all browsers, one
+  # after another, as the old JSF workflow ran it) run at the same time.
+  full-suites:
+    name: Full suites on one instance
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -221,12 +222,6 @@ jobs:
         run: npx playwright install --with-deps chromium firefox webkit
         working-directory: dataverse-jsf-tests
 
-      # The suite writes state files (.s2-dataverse-id, .regression-*) to its working directory,
-      # so each browser gets its own copy to keep them from overwriting each other.
-      - name: Make one copy of the JSF suite per browser
-        run: |
-          for b in chromium firefox webkit; do cp -r dataverse-jsf-tests "jsf-$b"; done
-
       # Compile first, so compilation doesn't compete with the tests.
       - name: Compile integration tests
         run: mvn -q test-compile -DcompilerArgument=-Xlint:unchecked
@@ -235,7 +230,7 @@ jobs:
       # RUN EVERYTHING AT THE SAME TIME
       # ---------------------------
       # Each suite writes to its own log; start and end times are recorded in timings.log.
-      - name: Run integration tests and all JSF browsers together
+      - name: Run full integration and JSF suites together
         env:
           DVAPIKEY: "burrito"
           DV_APIKEY: "burrito"
@@ -248,7 +243,6 @@ jobs:
           stamp "IT start"
           ( mvn test \
               -Dtest="$(cat tests/integration-tests.txt)" \
-              -DforkCount=3 -DreuseForks=true \
               -Dmaven.test.failure.ignore=true \
               -Ddataverse.test.baseurl=http://localhost:8080 \
               -Ddataverse.test.solr.softcommit.millis=100 \
@@ -256,21 +250,16 @@ jobs:
             stamp "IT end" ) &
           PIDS="$!"
 
-          for b in chromium firefox webkit; do
-            ( cd "jsf-$b"
-              stamp "JSF $b start"
-              npx playwright test --no-deps --reporter=list \
-                --project=setup-$b --project=regression-setup-$b > "../suite-logs/jsf-$b.log" 2>&1
-              echo "auth rc=$?" >> "../suite-logs/jsf-$b.log"
-              npx playwright test --no-deps \
-                --project=suite-$b --project=regression-$b >> "../suite-logs/jsf-$b.log" 2>&1
-              RC=$?
-              echo "tests rc=$RC" >> "../suite-logs/jsf-$b.log"
-              cd ..
-              stamp "JSF $b end rc=$RC"
-              exit $RC ) &
-            PIDS="$PIDS $!"
-          done
+          # The full JSF suite exactly as the old workflow ran it: all projects, browsers in order.
+          ( cd dataverse-jsf-tests
+            stamp "JSF start"
+            npx playwright test > ../suite-logs/jsf.log 2>&1
+            RC=$?
+            echo "tests rc=$RC" >> ../suite-logs/jsf.log
+            cd ..
+            stamp "JSF end rc=$RC"
+            exit $RC ) &
+          PIDS="$PIDS $!"
 
           # Sample load every 30 seconds while the suites run.
           ( while true; do echo "$(date -u +%H:%M:%S) load $(cut -d' ' -f1-3 /proc/loadavg) mem $(free -m | awk '/Mem:/{print $3"/"$2" MB"}')" >> suite-logs/load.log; sleep 30; done ) &
@@ -281,7 +270,7 @@ jobs:
           kill "$LOAD_PID"
 
           echo "===== timings ====="; cat timings.log
-          for b in chromium firefox webkit; do echo "===== JSF $b (tail) ====="; tail -n 25 "suite-logs/jsf-$b.log"; done
+          echo "===== JSF (tail) ====="; tail -n 40 suite-logs/jsf.log
           echo "===== integration tests (tail) ====="; tail -n 40 suite-logs/integration-tests.log
           echo "===== load (every 30s) ====="; cat suite-logs/load.log
           exit $FAILED
@@ -295,8 +284,8 @@ jobs:
         with:
           name: playwright-reports
           path: |
-            jsf-*/playwright-report/
-            jsf-*/test-results/
+            dataverse-jsf-tests/playwright-report/
+            dataverse-jsf-tests/test-results/
           retention-days: 14
 
       - name: Upload suite logs and timings
@@ -340,9 +329,9 @@ jobs:
   # =====================================================================
   integration-results:
     name: Integration Test Results
-    needs: all-tests
+    needs: full-suites
     # Run when groups failed too, but not when they never ran (e.g. the build failed).
-    if: ${{ !cancelled() && needs.all-tests.result != 'skipped' }}
+    if: ${{ !cancelled() && needs.full-suites.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
