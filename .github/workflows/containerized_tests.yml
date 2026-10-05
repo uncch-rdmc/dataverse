@@ -152,25 +152,15 @@ jobs:
           retention-days: 7
 
   # =====================================================================
-  # JSF FRONTEND TESTS: one fresh stack per browser
+  # EXPERIMENT: ALL TESTS AT ONCE AGAINST ONE DATAVERSE INSTANCE
   # =====================================================================
-  jsf-tests:
-    name: JSF Tests (${{ matrix.browser }})
+  # One runner, one stack. The integration tests run in 3 parallel surefire forks while
+  # Chromium, Firefox and WebKit each run the JSF suite at the same time.
+  all-tests:
+    name: All tests on one instance
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox, webkit]
-
-    defaults:
-      run:
-        shell: bash
-
-    permissions:
-      contents: read
+    timeout-minutes: 90
 
     env:
       BASE_URL:       "http://localhost:8080"
@@ -183,105 +173,6 @@ jobs:
       LOCALLY_FAIR_ENABLED: "false"
       DOTENV_CONFIG_QUIET: "true"
 
-    steps:
-
-      # ---------------------------
-      # CHECKOUT
-      # ---------------------------
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      # ---------------------------
-      # START + CONFIGURE DATAVERSE
-      # ---------------------------
-      - name: Start Dataverse stack
-        uses: ./.github/actions/start-dataverse-stack
-
-      # ---------------------------
-      # SETUP NODE.JS
-      # ---------------------------
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-
-      # ---------------------------
-      # CHECKOUT dataverse-jsf-tests
-      # ---------------------------
-      - name: Checkout dataverse-jsf-tests
-        uses: actions/checkout@v7
-        with:
-          repository: gdcc/dataverse-jsf-tests
-          path: dataverse-jsf-tests
-
-      - name: Install dataverse-jsf-tests dependencies
-        run: npm ci
-        working-directory: dataverse-jsf-tests
-
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps ${{ matrix.browser }}
-        working-directory: dataverse-jsf-tests
-
-      # ---------------------------
-      # RUN PLAYWRIGHT FRONTEND TESTS
-      # ---------------------------
-      # The Playwright projects chain the browsers (chromium -> firefox -> webkit),
-      # so --no-deps is needed to run a single browser. Without dependencies the
-      # setup -> suite ordering is no longer guaranteed, so authentication runs first
-      # as its own invocation. It reports to the console only, so it doesn't
-      # overwrite the HTML report of the test run.
-      - name: Authenticate (${{ matrix.browser }})
-        run: |
-          npx playwright test --no-deps --reporter=list \
-            --project=setup-${{ matrix.browser }} \
-            --project=regression-setup-${{ matrix.browser }}
-        working-directory: dataverse-jsf-tests
-
-      - name: Run Playwright frontend tests (${{ matrix.browser }})
-        run: |
-          npx playwright test --no-deps \
-            --project=suite-${{ matrix.browser }} \
-            --project=regression-${{ matrix.browser }}
-        working-directory: dataverse-jsf-tests
-
-      # ---------------------------
-      # UPLOAD PLAYWRIGHT REPORT
-      # ---------------------------
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-report-${{ matrix.browser }}
-          path: dataverse-jsf-tests/playwright-report/
-          retention-days: 14
-
-      # ---------------------------
-      # COLLECT + UPLOAD DOCKER LOGS (ALWAYS)
-      # ---------------------------
-      - name: Collect Docker logs
-        if: always()
-        uses: ./.github/actions/collect-docker-logs
-        with:
-          artifact-name: docker-logs-jsf-${{ matrix.browser }}
-
-  # =====================================================================
-  # INTEGRATION TESTS: classes split into balanced groups, one fresh stack per group
-  # =====================================================================
-  integration-tests:
-    name: Integration Tests (${{ matrix.group }}/3)
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    strategy:
-      fail-fast: false
-      matrix:
-        # Keep TOTAL_GROUPS below in sync with the number of entries here.
-        group: [1, 2, 3]
-
-    env:
-      TOTAL_GROUPS: 3
-
     defaults:
       run:
         shell: bash
@@ -297,6 +188,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Runner resources
+        run: |
+          nproc
+          free -h
+
       # ---------------------------
       # START + CONFIGURE DATAVERSE
       # ---------------------------
@@ -304,44 +200,125 @@ jobs:
         uses: ./.github/actions/start-dataverse-stack
 
       # ---------------------------
-      # RUN MAVEN INTEGRATION TESTS (THIS GROUP ONLY)
+      # PREPARE BOTH SUITES
       # ---------------------------
-      # Splits tests/integration-tests.txt by the times in tests/integration-test-timings.csv.
-      - name: Run Maven Integration Tests (group ${{ matrix.group }})
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Checkout dataverse-jsf-tests
+        uses: actions/checkout@v7
+        with:
+          repository: gdcc/dataverse-jsf-tests
+          path: dataverse-jsf-tests
+
+      - name: Install dataverse-jsf-tests dependencies
+        run: npm ci
+        working-directory: dataverse-jsf-tests
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+        working-directory: dataverse-jsf-tests
+
+      # The suite writes state files (.s2-dataverse-id, .regression-*) to its working directory,
+      # so each browser gets its own copy to keep them from overwriting each other.
+      - name: Make one copy of the JSF suite per browser
+        run: |
+          for b in chromium firefox webkit; do cp -r dataverse-jsf-tests "jsf-$b"; done
+
+      # Compile first, so compilation doesn't compete with the tests.
+      - name: Compile integration tests
+        run: mvn -q test-compile -DcompilerArgument=-Xlint:unchecked
+
+      # ---------------------------
+      # RUN EVERYTHING AT THE SAME TIME
+      # ---------------------------
+      # Each suite writes to its own log; start and end times are recorded in timings.log.
+      - name: Run integration tests and all JSF browsers together
         env:
           DVAPIKEY: "burrito"
           DV_APIKEY: "burrito"
           DV_API_KEY: "burrito"
-          GROUP: ${{ matrix.group }}
         run: |
-          set -euo pipefail
-          TEST_SUITE=$(python3 .github/workflows/scripts/split-integration-tests.py "$GROUP" "$TOTAL_GROUPS")
+          set +e
+          stamp() { echo "$1 $(date -u +%H:%M:%S)" | tee -a timings.log; }
+          mkdir -p suite-logs
 
-          echo "Running suite: $TEST_SUITE"
+          stamp "IT start"
+          ( mvn test \
+              -Dtest="$(cat tests/integration-tests.txt)" \
+              -DforkCount=3 -DreuseForks=true \
+              -Dmaven.test.failure.ignore=true \
+              -Ddataverse.test.baseurl=http://localhost:8080 \
+              -Ddataverse.test.solr.softcommit.millis=100 \
+              -DcompilerArgument=-Xlint:unchecked > suite-logs/integration-tests.log 2>&1
+            stamp "IT end" ) &
+          PIDS="$!"
 
-          mvn test \
-            -Dtest="$TEST_SUITE" \
-            -Dmaven.test.failure.ignore=true \
-            -Ddataverse.test.baseurl=http://localhost:8080 \
-            -Ddataverse.test.solr.softcommit.millis=100 \
-            -DcompilerArgument=-Xlint:unchecked
+          for b in chromium firefox webkit; do
+            ( cd "jsf-$b"
+              stamp "JSF $b start"
+              npx playwright test --no-deps --reporter=list \
+                --project=setup-$b --project=regression-setup-$b > "../suite-logs/jsf-$b.log" 2>&1
+              echo "auth rc=$?" >> "../suite-logs/jsf-$b.log"
+              npx playwright test --no-deps \
+                --project=suite-$b --project=regression-$b >> "../suite-logs/jsf-$b.log" 2>&1
+              RC=$?
+              echo "tests rc=$RC" >> "../suite-logs/jsf-$b.log"
+              cd ..
+              stamp "JSF $b end rc=$RC"
+              exit $RC ) &
+            PIDS="$PIDS $!"
+          done
+
+          # Sample load every 30 seconds while the suites run.
+          ( while true; do echo "$(date -u +%H:%M:%S) load $(cut -d' ' -f1-3 /proc/loadavg) mem $(free -m | awk '/Mem:/{print $3"/"$2" MB"}')" >> suite-logs/load.log; sleep 30; done ) &
+          LOAD_PID=$!
+
+          FAILED=0
+          for p in $PIDS; do wait "$p" || FAILED=1; done
+          kill "$LOAD_PID"
+
+          echo "===== timings ====="; cat timings.log
+          for b in chromium firefox webkit; do echo "===== JSF $b (tail) ====="; tail -n 25 "suite-logs/jsf-$b.log"; done
+          echo "===== integration tests (tail) ====="; tail -n 40 suite-logs/integration-tests.log
+          echo "===== load (every 30s) ====="; cat suite-logs/load.log
+          exit $FAILED
 
       # ---------------------------
-      # UPLOAD SUREFIRE/FAILSAFE REPORTS
+      # UPLOAD REPORTS AND LOGS
       # ---------------------------
+      - name: Upload Playwright reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-reports
+          path: |
+            jsf-*/playwright-report/
+            jsf-*/test-results/
+          retention-days: 14
+
+      - name: Upload suite logs and timings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: suite-logs
+          path: |
+            suite-logs/
+            timings.log
+          retention-days: 14
+
       - name: Upload Test Failure Reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: maven-test-reports-${{ matrix.group }}
+          name: maven-test-reports-all
           path: |
             target/surefire-reports/
             target/failsafe-reports/
           retention-days: 14
 
-      # ---------------------------
-      # FAIL THIS GROUP IF ITS TESTS FAILED
-      # ---------------------------
       - name: Check for Test Failures
         if: always()
         run: |
@@ -352,23 +329,20 @@ jobs:
           fi
           echo "All tests passed."
 
-      # ---------------------------
-      # COLLECT + UPLOAD DOCKER LOGS (ALWAYS)
-      # ---------------------------
       - name: Collect Docker logs
         if: always()
         uses: ./.github/actions/collect-docker-logs
         with:
-          artifact-name: docker-logs-integration-${{ matrix.group }}
+          artifact-name: docker-logs-all-tests
 
   # =====================================================================
   # INTEGRATION TEST RESULTS: one combined dashboard for all groups
   # =====================================================================
   integration-results:
     name: Integration Test Results
-    needs: integration-tests
+    needs: all-tests
     # Run when groups failed too, but not when they never ran (e.g. the build failed).
-    if: ${{ !cancelled() && needs.integration-tests.result != 'skipped' }}
+    if: ${{ !cancelled() && needs.all-tests.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
