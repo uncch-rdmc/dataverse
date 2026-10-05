@@ -1,0 +1,387 @@
+name: Containerized Tests for Dataverse
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+      - master
+    paths-ignore:
+      - "doc/**"
+      - "**/*.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/*.md"
+  pull_request:
+    branches:
+      - develop
+      - master
+    paths-ignore:
+      - "doc/**"
+      - "**/*.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/*.md"
+
+concurrency:
+  group: "containerized-tests-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+
+  # =====================================================================
+  # BUILD: build the containers once and hand them off to the test jobs
+  # =====================================================================
+  build:
+    name: Build Containers
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: bash
+
+    permissions:
+      contents: read
+
+    steps:
+
+      # ---------------------------
+      # CHECKOUT
+      # ---------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # ---------------------------
+      # VERIFY DOCKER
+      # ---------------------------
+      - name: Verify Docker
+        run: |
+          set -euo pipefail
+          docker version
+
+      # ---------------------------
+      # SETUP JAVA + MAVEN
+      # ---------------------------
+      - name: Setup Java
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "maven"
+
+      - name: Verify Maven
+        run: |
+          set -euo pipefail
+          mvn -version
+
+      # ---------------------------
+      # FETCH OR BUILD BASE IMAGE
+      # ---------------------------
+      - name: Fetch or Build local base image
+        run: |
+          set -euo pipefail
+
+          # 1. Ask Maven for the expected tag
+          BASE_IMAGE=$(cd modules/container-base && mvn build-helper:parse-version help:evaluate -Dexpression=base.image -q -DforceStdout -Pct)
+          echo "Target base image: $BASE_IMAGE"
+
+          # 2. Try to pull it. If that fails, build it.
+          if docker pull "$BASE_IMAGE"; then
+            echo "✅ Image found and pulled successfully! Skipping local build."
+          else
+            echo "⚠️ Pull failed (image likely doesn't exist yet). Building locally..."
+            mvn -Pct clean package -f modules/container-base/pom.xml
+          fi
+
+      # ---------------------------
+      # BUILD IMAGES (Dataverse-native)
+      # ---------------------------
+      - name: Build Dataverse containers via Maven
+        run: |
+          set -euo pipefail
+          mvn -Pct -T 1C package
+
+      # ---------------------------
+      # PACKAGE BUILD OUTPUT
+      # ---------------------------
+      # Records which code was built, so a failed run can be reproduced locally from the right commit.
+      # On pull requests, GITHUB_SHA is the merge commit of the PR into its base branch, not the PR head.
+      - name: Record build info
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p dataverse-build
+          {
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "commit=${GITHUB_SHA}"
+            echo "event=${EVENT_NAME}"
+            echo "ref=${REF}"
+            echo "pr_number=${PR_NUMBER}"
+            echo "pr_head_sha=${PR_HEAD_SHA}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "app_image_id=$(docker image inspect --format '{{.Id}}' gdcc/dataverse:unstable)"
+            echo "configbaker_image_id=$(docker image inspect --format '{{.Id}}' gdcc/configbaker:unstable)"
+          } > dataverse-build/build-info.txt
+          cat dataverse-build/build-info.txt
+
+      # The base image travels along as layers of the app image, so only these two need saving.
+      # docker-compose-dev.yml bind-mounts ./target/dataverse into the app container,
+      # so the exploded WAR has to be handed off as well.
+      - name: Save images and exploded WAR
+        run: |
+          set -euo pipefail
+          mkdir -p dataverse-build
+          docker save gdcc/dataverse:unstable gdcc/configbaker:unstable \
+            | zstd -T0 -3 -o dataverse-build/images.tar.zst
+          tar -C target -cf - dataverse \
+            | zstd -T0 -3 -o dataverse-build/target-dataverse.tar.zst
+          ls -lh dataverse-build/
+
+      # Kept for a week so a failed run can be reproduced locally with the exact same images
+      # (see "Reproducing a CI Failure Locally" in the developer guide).
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dataverse-build
+          path: dataverse-build/
+          compression-level: 0
+          retention-days: 7
+
+  # =====================================================================
+  # EXPERIMENT: FULL SUITES AT THE SAME TIME AGAINST ONE DATAVERSE INSTANCE
+  # =====================================================================
+  # Checks for state pollution between the suites. One runner, one stack: the full
+  # integration suite (one surefire process) and the full JSF suite (all browsers, one
+  # after another, as the old JSF workflow ran it) run at the same time.
+  full-suites:
+    name: Full suites on one instance
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      BASE_URL:       "http://localhost:8080"
+      LOGIN_ADAPTER:  "builtin"
+      DV_USERNAME:    "dataverseAdmin"
+      DV_PASSWORD:    "admin1"
+      DV_FULL_NAME:   "Dataverse Admin"
+      ROOT_DATAVERSE: "/dataverse/root"
+      SKIP_PREFLIGHT: "true"
+      LOCALLY_FAIR_ENABLED: "false"
+      DOTENV_CONFIG_QUIET: "true"
+
+    defaults:
+      run:
+        shell: bash
+
+    permissions:
+      contents: read
+
+    steps:
+
+      # ---------------------------
+      # CHECKOUT
+      # ---------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Runner resources
+        run: |
+          nproc
+          free -h
+
+      # ---------------------------
+      # START + CONFIGURE DATAVERSE
+      # ---------------------------
+      - name: Start Dataverse stack
+        uses: ./.github/actions/start-dataverse-stack
+
+      # ---------------------------
+      # PREPARE BOTH SUITES
+      # ---------------------------
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Checkout dataverse-jsf-tests
+        uses: actions/checkout@v7
+        with:
+          repository: gdcc/dataverse-jsf-tests
+          path: dataverse-jsf-tests
+
+      - name: Install dataverse-jsf-tests dependencies
+        run: npm ci
+        working-directory: dataverse-jsf-tests
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+        working-directory: dataverse-jsf-tests
+
+      # Compile first, so compilation doesn't compete with the tests.
+      - name: Compile integration tests
+        run: mvn -q test-compile -DcompilerArgument=-Xlint:unchecked
+
+      # ---------------------------
+      # RUN EVERYTHING AT THE SAME TIME
+      # ---------------------------
+      # Each suite writes to its own log; start and end times are recorded in timings.log.
+      - name: Run full integration and JSF suites together
+        env:
+          DVAPIKEY: "burrito"
+          DV_APIKEY: "burrito"
+          DV_API_KEY: "burrito"
+        run: |
+          set +e
+          stamp() { echo "$1 $(date -u +%H:%M:%S)" | tee -a timings.log; }
+          mkdir -p suite-logs
+
+          stamp "IT start"
+          ( mvn test \
+              -Dtest="$(cat tests/integration-tests.txt)" \
+              -Dmaven.test.failure.ignore=true \
+              -Ddataverse.test.baseurl=http://localhost:8080 \
+              -Ddataverse.test.solr.softcommit.millis=100 \
+              -DcompilerArgument=-Xlint:unchecked > suite-logs/integration-tests.log 2>&1
+            stamp "IT end" ) &
+          PIDS="$!"
+
+          # The full JSF suite, browsers one after another. Unlike the chained config, a failure
+          # in one browser doesn't stop the next one: each runs setup, then its tests (--no-deps).
+          ( cd dataverse-jsf-tests
+            RC=0
+            for b in chromium firefox webkit; do
+              stamp "JSF $b start"
+              npx playwright test --no-deps --reporter=list \
+                --project=setup-$b --project=regression-setup-$b >> ../suite-logs/jsf.log 2>&1 || RC=1
+              PLAYWRIGHT_HTML_OUTPUT_DIR="playwright-report-$b" npx playwright test --no-deps \
+                --output="test-results-$b" \
+                --project=suite-$b --project=regression-$b >> ../suite-logs/jsf.log 2>&1
+              B_RC=$?
+              [ "$B_RC" -ne 0 ] && RC=1
+              stamp "JSF $b end rc=$B_RC"
+            done
+            cd ..
+            exit $RC ) &
+          PIDS="$PIDS $!"
+
+          # Sample load every 30 seconds while the suites run.
+          ( while true; do echo "$(date -u +%H:%M:%S) load $(cut -d' ' -f1-3 /proc/loadavg) mem $(free -m | awk '/Mem:/{print $3"/"$2" MB"}')" >> suite-logs/load.log; sleep 30; done ) &
+          LOAD_PID=$!
+
+          FAILED=0
+          for p in $PIDS; do wait "$p" || FAILED=1; done
+          kill "$LOAD_PID"
+
+          echo "===== timings ====="; cat timings.log
+          echo "===== JSF results per browser ====="; grep -E "^ +[0-9]+ (passed|failed|flaky|skipped|did not run)|^\\s+\\[(suite|regression)-[a-z]+\\] ›" suite-logs/jsf.log || true
+          echo "===== JSF (tail) ====="; tail -n 40 suite-logs/jsf.log
+          echo "===== integration tests (tail) ====="; tail -n 40 suite-logs/integration-tests.log
+          echo "===== load (every 30s) ====="; cat suite-logs/load.log
+          exit $FAILED
+
+      # ---------------------------
+      # UPLOAD REPORTS AND LOGS
+      # ---------------------------
+      - name: Upload Playwright reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-reports
+          path: |
+            dataverse-jsf-tests/playwright-report-*/
+            dataverse-jsf-tests/test-results-*/
+          retention-days: 14
+
+      - name: Upload suite logs and timings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: suite-logs
+          path: |
+            suite-logs/
+            timings.log
+          retention-days: 14
+
+      - name: Upload Test Failure Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: maven-test-reports-all
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+          retention-days: 14
+
+      - name: Check for Test Failures
+        if: always()
+        run: |
+          echo "Checking Surefire/Failsafe reports for failures..."
+          if grep -q "<failure" target/surefire-reports/*.xml target/failsafe-reports/*.xml 2>/dev/null; then
+            echo "Tests failed! Failing the workflow."
+            exit 1
+          fi
+          echo "All tests passed."
+
+      - name: Collect Docker logs
+        if: always()
+        uses: ./.github/actions/collect-docker-logs
+        with:
+          artifact-name: docker-logs-all-tests
+
+  # =====================================================================
+  # INTEGRATION TEST RESULTS: one combined dashboard for all groups
+  # =====================================================================
+  integration-results:
+    name: Integration Test Results
+    needs: full-suites
+    # Run when groups failed too, but not when they never ran (e.g. the build failed).
+    if: ${{ !cancelled() && needs.full-suites.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        shell: bash
+
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+
+      # ---------------------------
+      # DOWNLOAD REPORTS OF ALL GROUPS
+      # ---------------------------
+      - name: Download test reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: maven-test-reports-*
+          path: test-reports
+
+      # ---------------------------
+      # PUBLISH TEST DASHBOARD IN GITHUB PR
+      # ---------------------------
+      - name: Publish Test Results Dashboard
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: |
+            test-reports/**/TEST-*.xml
+
+      # ---------------------------
+      # FAIL WORKFLOW IF TESTS FAILED
+      # ---------------------------
+      - name: Check for Test Failures
+        run: |
+          echo "Checking Surefire/Failsafe reports of all groups for failures..."
+          ls test-reports
+          if grep -rq "<failure" --include="*.xml" test-reports; then
+            echo "Tests failed! Failing the workflow."
+            exit 1
+          fi
+          echo "All tests passed."
