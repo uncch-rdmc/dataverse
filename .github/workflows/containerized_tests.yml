@@ -250,14 +250,22 @@ jobs:
             stamp "IT end" ) &
           PIDS="$!"
 
-          # The full JSF suite exactly as the old workflow ran it: all projects, browsers in order.
+          # The full JSF suite, browsers one after another. Unlike the chained config, a failure
+          # in one browser doesn't stop the next one: each runs setup, then its tests (--no-deps).
           ( cd dataverse-jsf-tests
-            stamp "JSF start"
-            npx playwright test > ../suite-logs/jsf.log 2>&1
-            RC=$?
-            echo "tests rc=$RC" >> ../suite-logs/jsf.log
+            RC=0
+            for b in chromium firefox webkit; do
+              stamp "JSF $b start"
+              npx playwright test --no-deps --reporter=list \
+                --project=setup-$b --project=regression-setup-$b >> ../suite-logs/jsf.log 2>&1 || RC=1
+              PLAYWRIGHT_HTML_OUTPUT_DIR="playwright-report-$b" npx playwright test --no-deps \
+                --output="test-results-$b" \
+                --project=suite-$b --project=regression-$b >> ../suite-logs/jsf.log 2>&1
+              B_RC=$?
+              [ "$B_RC" -ne 0 ] && RC=1
+              stamp "JSF $b end rc=$B_RC"
+            done
             cd ..
-            stamp "JSF end rc=$RC"
             exit $RC ) &
           PIDS="$PIDS $!"
 
@@ -270,6 +278,7 @@ jobs:
           kill "$LOAD_PID"
 
           echo "===== timings ====="; cat timings.log
+          echo "===== JSF results per browser ====="; grep -E "^ +[0-9]+ (passed|failed|flaky|skipped|did not run)|^\\s+\\[(suite|regression)-[a-z]+\\] ›" suite-logs/jsf.log || true
           echo "===== JSF (tail) ====="; tail -n 40 suite-logs/jsf.log
           echo "===== integration tests (tail) ====="; tail -n 40 suite-logs/integration-tests.log
           echo "===== load (every 30s) ====="; cat suite-logs/load.log
@@ -284,8 +293,8 @@ jobs:
         with:
           name: playwright-reports
           path: |
-            dataverse-jsf-tests/playwright-report/
-            dataverse-jsf-tests/test-results/
+            dataverse-jsf-tests/playwright-report-*/
+            dataverse-jsf-tests/test-results-*/
           retention-days: 14
 
       - name: Upload suite logs and timings
