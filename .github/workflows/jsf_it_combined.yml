@@ -15,7 +15,12 @@ concurrency:
 
 jobs:
   main-jsf-tests-workflow:
+    name: "ITs + JSF (${{ matrix.browser }})"
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     timeout-minutes: 180
 
     defaults:
@@ -223,15 +228,30 @@ jobs:
         working-directory: dataverse-jsf-tests
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+        run: npx playwright install --with-deps ${{ matrix.browser }}
         working-directory: dataverse-jsf-tests
 
       # ---------------------------
       # RUN PLAYWRIGHT FRONTEND TESTS
       # ---------------------------
-      - name: Run Playwright frontend tests
+      - name: Authenticate (${{ matrix.browser }})
+        run: npx playwright test --no-deps --reporter=list --project=setup-${{ matrix.browser }}
+        working-directory: dataverse-jsf-tests
+        env:
+          BASE_URL:       "http://localhost:8080"
+          LOGIN_ADAPTER:  "builtin"
+          DV_USERNAME:    "dataverseAdmin"
+          DV_PASSWORD:    "admin1"
+          DV_FULL_NAME:   "Dataverse Admin"
+          ROOT_DATAVERSE: "/dataverse/root"
+          SKIP_PREFLIGHT: "true"
+          LOCALLY_FAIR_ENABLED: "false"
+          DOTENV_CONFIG_QUIET: "true"
+
+
+      - name: Run Playwright frontend tests (${{ matrix.browser }})
         continue-on-error: true
-        run: npx playwright test
+        run: npx playwright test --no-deps --project=${{ matrix.browser }}
         working-directory: dataverse-jsf-tests
         env:
           BASE_URL:       "http://localhost:8080"
@@ -251,21 +271,18 @@ jobs:
         if: always()
         run: |
           set -uo pipefail
-          date -u +"JSF finished %Y-%m-%dT%H:%M:%SZ" | tee -a it-timing.txt
+          date -u +"JSF (${{ matrix.browser }}) finished %Y-%m-%dT%H:%M:%SZ" | tee -a it-timing.txt
           PID=$(cat it.pid)
           while kill -0 "$PID" 2>/dev/null; do sleep 30; done
           date -u +"ITs finished %Y-%m-%dT%H:%M:%SZ" | tee -a it-timing.txt
           echo "===== Integration test summary ====="
-          grep -E "Tests run:|FAIL|ERROR\]" it.log | tail -60 || true
-          if grep -q "<failure\|<error" target/surefire-reports/*.xml 2>/dev/null; then
-            echo "Integration tests had failures."
-          fi
+          grep -a -E "Tests run:.*(Failures: [1-9]|Errors: [1-9])|Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$|BUILD|Total time" it.log || true
 
       - name: Upload integration test reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: maven-test-reports
+          name: maven-test-reports-${{ matrix.browser }}
           path: |
             it.log
             it-timing.txt
@@ -279,7 +296,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: dataverse-jsf-tests/playwright-report/
           retention-days: 14
 
@@ -319,6 +336,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: docker-logs
+          name: docker-logs-${{ matrix.browser }}
           path: docker-logs/
           retention-days: 14
