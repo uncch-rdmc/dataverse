@@ -303,13 +303,17 @@ jobs:
           java -jar jacoco/jacococli.jar report coverage/server.exec \
             --classfiles target/dataverse/WEB-INF/classes \
             --sourcefiles src/main/java \
-            --name "Dataverse server coverage (JSF, ${{ matrix.browser }})" \
+            --name "Dataverse server coverage - JSF ${{ matrix.browser }}" \
             --html coverage/html --xml coverage/jacoco.xml --csv coverage/jacoco.csv
-          # Totals from the CSV: missed/covered per counter type
-          awk -F, 'NR>1 {im+=$4; ic+=$5; bm+=$6; bc+=$7; lm+=$8; lc+=$9; mm+=$12; mc+=$13; cm+=($12+$13>0 && $13==0); cc+=($13>0)}
-            END {printf "Lines:        %d / %d (%.1f%%)\nBranches:     %d / %d (%.1f%%)\nInstructions: %d / %d (%.1f%%)\nMethods:      %d / %d (%.1f%%)\nClasses:      %d / %d (%.1f%%)\n",
-              lc, lc+lm, 100*lc/(lc+lm), bc, bc+bm, 100*bc/(bc+bm), ic, ic+im, 100*ic/(ic+im), mc, mc+mm, 100*mc/(mc+mm), cc, cc+cm, 100*cc/(cc+cm)}' \
-            coverage/jacoco.csv | tee coverage/summary.txt
+          # Totals from the XML report's top-level counters
+          python3 - <<'PY' | tee coverage/summary.txt
+          import xml.etree.ElementTree as ET
+          root = ET.parse("coverage/jacoco.xml").getroot()
+          for c in root.findall("counter"):
+              covered, missed = int(c.get("covered")), int(c.get("missed"))
+              total = covered + missed
+              print(f"{c.get('type').title():12} {covered:>8,} / {total:>8,}  {100 * covered / total:5.1f}%")
+          PY
 
       - name: Upload JaCoCo coverage report
         if: always()
