@@ -217,8 +217,13 @@ jobs:
 
           echo "Running suite: $TEST_SUITE"
 
+          # forkCount=3 + reuseForks=true: Surefire runs three test JVMs and hands
+          # them the classes from tests/integration-tests.txt one at a time, so the
+          # list balances itself across them (no split file, no timing data).
           nohup mvn test \
             -Dtest="$TEST_SUITE" \
+            -DforkCount=3 \
+            -DreuseForks=true \
             -Dmaven.test.failure.ignore=true \
             -Ddataverse.test.baseurl=http://localhost:8080 \
             -Ddataverse.test.solr.softcommit.millis=100 \
