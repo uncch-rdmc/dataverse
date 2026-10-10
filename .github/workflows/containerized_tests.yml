@@ -1,0 +1,355 @@
+name: "Experiment: Build + Chromium JSF + JaCoCo"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+      - master
+    paths-ignore:
+      - "doc/**"
+      - "**/*.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/*.md"
+  pull_request:
+    branches:
+      - develop
+      - master
+    paths-ignore:
+      - "doc/**"
+      - "**/*.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/*.md"
+
+concurrency:
+  group: "containerized-tests-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+
+  # =====================================================================
+  # BUILD: build the containers once and hand them off to the test jobs
+  # =====================================================================
+  build:
+    name: Build Containers
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: bash
+
+    permissions:
+      contents: read
+
+    steps:
+
+      # ---------------------------
+      # CHECKOUT
+      # ---------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # ---------------------------
+      # VERIFY DOCKER
+      # ---------------------------
+      - name: Verify Docker
+        run: |
+          set -euo pipefail
+          docker version
+
+      # ---------------------------
+      # SETUP JAVA + MAVEN
+      # ---------------------------
+      - name: Setup Java
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "maven"
+
+      - name: Verify Maven
+        run: |
+          set -euo pipefail
+          mvn -version
+
+      # ---------------------------
+      # FETCH OR BUILD BASE IMAGE
+      # ---------------------------
+      - name: Fetch or Build local base image
+        run: |
+          set -euo pipefail
+
+          # 1. Ask Maven for the expected tag
+          BASE_IMAGE=$(cd modules/container-base && mvn build-helper:parse-version help:evaluate -Dexpression=base.image -q -DforceStdout -Pct)
+          echo "Target base image: $BASE_IMAGE"
+
+          # 2. Try to pull it. If that fails, build it.
+          if docker pull "$BASE_IMAGE"; then
+            echo "✅ Image found and pulled successfully! Skipping local build."
+          else
+            echo "⚠️ Pull failed (image likely doesn't exist yet). Building locally..."
+            mvn -Pct clean package -f modules/container-base/pom.xml
+          fi
+
+      # ---------------------------
+      # BUILD IMAGES (Dataverse-native)
+      # ---------------------------
+      - name: Build Dataverse containers via Maven
+        run: |
+          set -euo pipefail
+          mvn -Pct -T 1C package
+
+      # ---------------------------
+      # PACKAGE BUILD OUTPUT
+      # ---------------------------
+      # Records which code was built, so a failed run can be reproduced locally from the right commit.
+      # On pull requests, GITHUB_SHA is the merge commit of the PR into its base branch, not the PR head.
+      - name: Record build info
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p dataverse-build
+          {
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "commit=${GITHUB_SHA}"
+            echo "event=${EVENT_NAME}"
+            echo "ref=${REF}"
+            echo "pr_number=${PR_NUMBER}"
+            echo "pr_head_sha=${PR_HEAD_SHA}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "app_image_id=$(docker image inspect --format '{{.Id}}' gdcc/dataverse:unstable)"
+            echo "configbaker_image_id=$(docker image inspect --format '{{.Id}}' gdcc/configbaker:unstable)"
+          } > dataverse-build/build-info.txt
+          cat dataverse-build/build-info.txt
+
+      # The base image travels along as layers of the app image, so only these two need saving.
+      # docker-compose-dev.yml bind-mounts ./target/dataverse into the app container,
+      # so the exploded WAR has to be handed off as well.
+      - name: Save images and exploded WAR
+        run: |
+          set -euo pipefail
+          mkdir -p dataverse-build
+          docker save gdcc/dataverse:unstable gdcc/configbaker:unstable \
+            | zstd -T0 -3 -o dataverse-build/images.tar.zst
+          tar -C target -cf - dataverse \
+            | zstd -T0 -3 -o dataverse-build/target-dataverse.tar.zst
+          ls -lh dataverse-build/
+
+      # Kept for a week so a failed run can be reproduced locally with the exact same images
+      # (see "Reproducing a CI Failure Locally" in the developer guide).
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dataverse-build
+          path: dataverse-build/
+          compression-level: 0
+          retention-days: 7
+
+  # =====================================================================
+  # TESTS (experiment): one stack, Chromium JSF tests only, with the
+  # JaCoCo agent attached to Payara to measure server-side coverage
+  # =====================================================================
+  tests:
+    name: JSF Tests (${{ matrix.browser }}) + JaCoCo
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Experiment: Chromium only, to keep the feedback loop short.
+        browser: [chromium]
+
+    defaults:
+      run:
+        shell: bash
+
+    permissions:
+      contents: read
+
+    env:
+      BASE_URL:       "http://localhost:8080"
+      LOGIN_ADAPTER:  "builtin"
+      DV_USERNAME:    "dataverseAdmin"
+      DV_PASSWORD:    "admin1"
+      DV_FULL_NAME:   "Dataverse Admin"
+      ROOT_DATAVERSE: "/dataverse/root"
+      SKIP_PREFLIGHT: "true"
+      LOCALLY_FAIR_ENABLED: "false"
+      DOTENV_CONFIG_QUIET: "true"
+
+    steps:
+
+      # ---------------------------
+      # CHECKOUT
+      # ---------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # ---------------------------
+      # START + CONFIGURE DATAVERSE
+      # ---------------------------
+      # ---------------------------
+      # JACOCO (EXPERIMENT): attach the agent to Payara's JVM
+      # ---------------------------
+      # The agent runs as a TCP server inside the app container, so coverage can
+      # be dumped from the live server at the end. In the default file mode the
+      # .exec file is only written on a clean JVM shutdown, which never happens
+      # in CI. JVM_ARGS is how startInForeground.sh passes extra JVM options
+      # to Payara.
+      - name: Prepare JaCoCo agent
+        run: |
+          set -euo pipefail
+          JACOCO_VERSION=0.8.14
+          mkdir -p jacoco
+          curl -fsSL -o jacoco/jacocoagent.jar \
+            "https://repo1.maven.org/maven2/org/jacoco/org.jacoco.agent/${JACOCO_VERSION}/org.jacoco.agent-${JACOCO_VERSION}-runtime.jar"
+          curl -fsSL -o jacoco/jacococli.jar \
+            "https://repo1.maven.org/maven2/org/jacoco/org.jacoco.cli/${JACOCO_VERSION}/org.jacoco.cli-${JACOCO_VERSION}-nodeps.jar"
+
+          python3 - <<'PY'
+          import re
+          p = "docker-compose-dev.yml"
+          s = open(p).read()
+          agent = "-javaagent:/jacoco/jacocoagent.jar=output=tcpserver,address=*,port=6300,includes=edu.harvard.iq.dataverse.*"
+          a = "      JVM_ARGS: -Ddataverse.files.storage-driver-id=file1\n"
+          assert s.count(a) == 1
+          s = s.replace(a, a + "        " + agent + "\n")
+          a = '      - "8686:8686" # JMX\n'
+          assert s.count(a) == 1
+          s = s.replace(a, a + '      - "6300:6300" # JaCoCo agent\n')
+          a = "      - ./target/dataverse:/opt/payara/deployments/dataverse:ro\n"
+          assert s.count(a) == 1
+          s = s.replace(a, a + "      - ./jacoco:/jacoco:ro\n")
+          open(p, "w").write(s)
+          PY
+          git diff docker-compose-dev.yml
+
+      - name: Start Dataverse stack
+        uses: ./.github/actions/start-dataverse-stack
+
+      - name: Check the JaCoCo agent is attached
+        run: |
+          set -euo pipefail
+          docker exec dev_dataverse sh -c 'ps -ef | grep -o "javaagent:[^ ]*" | head -1'
+          java -jar jacoco/jacococli.jar dump --address localhost --port 6300 \
+            --destfile /tmp/jacoco-probe.exec
+          ls -l /tmp/jacoco-probe.exec
+      # ---------------------------
+      # SETUP NODE.JS
+      # ---------------------------
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      # ---------------------------
+      # CHECKOUT dataverse-jsf-tests
+      # ---------------------------
+      - name: Checkout dataverse-jsf-tests
+        uses: actions/checkout@v7
+        with:
+          repository: gdcc/dataverse-jsf-tests
+          path: dataverse-jsf-tests
+
+      - name: Install dataverse-jsf-tests dependencies
+        run: npm ci
+        working-directory: dataverse-jsf-tests
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+        working-directory: dataverse-jsf-tests
+
+      # ---------------------------
+      # RUN PLAYWRIGHT FRONTEND TESTS
+      # ---------------------------
+      # The Playwright projects chain the browsers (chromium -> firefox -> webkit),
+      # so --no-deps is needed to run a single browser. Without dependencies the
+      # setup -> suite ordering is no longer guaranteed, so authentication runs first
+      # as its own invocation. It reports to the console only, so it doesn't
+      # overwrite the HTML report of the test run.
+      - name: Authenticate (${{ matrix.browser }})
+        run: |
+          npx playwright test --no-deps --reporter=list \
+            --project=setup-${{ matrix.browser }}
+        working-directory: dataverse-jsf-tests
+
+      # continue-on-error so the coverage report is still built; the last
+      # step fails the job if the JSF tests failed.
+      - name: Run Playwright frontend tests (${{ matrix.browser }})
+        id: jsf
+        continue-on-error: true
+        run: |
+          npx playwright test --no-deps \
+            --project=${{ matrix.browser }}
+        working-directory: dataverse-jsf-tests
+      # ---------------------------
+      # JACOCO (EXPERIMENT): dump from the live server and build the report
+      # ---------------------------
+      - name: Dump JaCoCo coverage and build the report
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p coverage
+          java -jar jacoco/jacococli.jar dump --address localhost --port 6300 \
+            --destfile coverage/server.exec
+          java -jar jacoco/jacococli.jar report coverage/server.exec \
+            --classfiles target/dataverse/WEB-INF/classes \
+            --sourcefiles src/main/java \
+            --name "Dataverse server coverage - JSF ${{ matrix.browser }}" \
+            --html coverage/html --xml coverage/jacoco.xml --csv coverage/jacoco.csv
+          # Totals from the XML report's top-level counters
+          python3 - <<'PY' | tee coverage/summary.txt
+          import xml.etree.ElementTree as ET
+          root = ET.parse("coverage/jacoco.xml").getroot()
+          for c in root.findall("counter"):
+              covered, missed = int(c.get("covered")), int(c.get("missed"))
+              total = covered + missed
+              print(f"{c.get('type').title():12} {covered:>8,} / {total:>8,}  {100 * covered / total:5.1f}%")
+          PY
+
+      - name: Upload JaCoCo coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jacoco-coverage-${{ matrix.browser }}
+          path: coverage/
+          retention-days: 14
+
+      # ---------------------------
+      # UPLOAD REPORTS
+      # ---------------------------
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: dataverse-jsf-tests/playwright-report/
+          retention-days: 14
+      # ---------------------------
+      # FAIL THE JOB IF EITHER SUITE FAILED
+      # ---------------------------
+      - name: Check for Test Failures
+        if: always()
+        run: |
+          if [ "${{ steps.jsf.outcome }}" != "success" ]; then
+            echo "JSF tests (${{ matrix.browser }}) failed."
+            exit 1
+          fi
+          echo "All tests passed."
+
+      # ---------------------------
+      # COLLECT + UPLOAD DOCKER LOGS (ALWAYS)
+      # ---------------------------
+      - name: Collect Docker logs
+        if: always()
+        uses: ./.github/actions/collect-docker-logs
+        with:
+          artifact-name: docker-logs-${{ matrix.browser }}
