@@ -213,12 +213,17 @@ jobs:
           DV_API_KEY: "burrito"
         run: |
           set -euo pipefail
-          TEST_SUITE=$(cat tests/integration-tests.txt)
 
-          echo "Running suite: $TEST_SUITE"
-
-          nohup mvn test \
-            -Dtest="$TEST_SUITE" \
+          # Experiment: no tests/integration-tests.txt. Failsafe finds every *IT
+          # class itself; only tests that start their own containers or need a
+          # special setup are excluded, by their JUnit tags.
+          # This is the integration-test part of `mvn verify`, without the
+          # package phase: packaging would rebuild target/dataverse, which the
+          # running app container has bind-mounted.
+          nohup mvn test-compile failsafe:integration-test failsafe:verify \
+            -DskipUnitTests=true \
+            -DskipIntegrationTests=false \
+            -Dit.groups='!testcontainers & !migration & !performance' \
             -Dmaven.test.failure.ignore=true \
             -Ddataverse.test.baseurl=http://localhost:8080 \
             -Ddataverse.test.solr.softcommit.millis=100 \
